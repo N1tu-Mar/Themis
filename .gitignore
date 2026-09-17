@@ -9,3 +9,5 @@ __pycache__/
 .DS_Store
 /themis-claude-token-efficient/
 /prompt.md?
+.next/
+next-env.d.ts
