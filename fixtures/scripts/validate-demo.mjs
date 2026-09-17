@@ -110,7 +110,7 @@ export function validateDemoFixtureSet(data) {
     }
   }
   for (const message of inbound.values()) check([...customers.values()].some(customer => customer.phone === message.customerExternalId), `${message.messageId}: missing recipient`);
-  for (const message of outbound.values()) check(customers.get(cases.get(message.caseId)?.customerId)?.phone === message.customerExternalId, `${message.messageId}: recipient/case mismatch`);
+  for (const message of outbound.values()) check(customers.get(cases.get(message.caseId)?.customerId)?.[message.channel === 'EMAIL' ? 'email' : 'phone'] === message.customerExternalId, `${message.messageId}: recipient/case mismatch`);
   if (errors.length) throw new Error(errors.join('\n'));
   return true;
 }

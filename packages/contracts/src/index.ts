@@ -22,7 +22,7 @@ export const CASE_STATUS_TRANSITIONS: Readonly<Record<CaseStatus, readonly CaseS
   INTAKE: ['TRANSACTION_MATCHING', 'AWAITING_CUSTOMER_INFORMATION', 'NEEDS_HUMAN_REVIEW'],
   TRANSACTION_MATCHING: ['AWAITING_TRANSACTION_CONFIRMATION', 'AWAITING_CUSTOMER_INFORMATION', 'NEEDS_HUMAN_REVIEW'],
   AWAITING_TRANSACTION_CONFIRMATION: ['CLASSIFYING_DISPUTE', 'TRANSACTION_MATCHING', 'NEEDS_HUMAN_REVIEW'],
-  CLASSIFYING_DISPUTE: ['INVESTIGATING', 'AWAITING_CUSTOMER_INFORMATION', 'NEEDS_HUMAN_REVIEW'],
+  CLASSIFYING_DISPUTE: ['INVESTIGATING', 'AWAITING_CUSTOMER_INFORMATION', 'NEEDS_HUMAN_REVIEW', 'RESOLVED'],
   INVESTIGATING: ['AWAITING_CUSTOMER_INFORMATION', 'AWAITING_MERCHANT_EVIDENCE', 'RESOLUTION_PROPOSED', 'NEEDS_HUMAN_REVIEW'],
   AWAITING_CUSTOMER_INFORMATION: ['INTAKE', 'TRANSACTION_MATCHING', 'CLASSIFYING_DISPUTE', 'INVESTIGATING', 'NEEDS_HUMAN_REVIEW'],
   AWAITING_MERCHANT_EVIDENCE: ['INVESTIGATING', 'NEEDS_HUMAN_REVIEW'],
@@ -147,3 +147,21 @@ export type ClaimType = z.infer<typeof ClaimTypeSchema>;
 export type Action = z.infer<typeof ActionSchema>;
 
 export type CaseOutcome = z.infer<typeof CaseOutcomeSchema>;
+
+/** Validate a case transition, including the no-dispute recognition path. */
+export function assertCaseTransition(current: Case, next: Case): void {
+  CaseSchema.parse(current);
+  CaseSchema.parse(next);
+  if (current.caseId !== next.caseId || current.customerId !== next.customerId) {
+    throw new Error('Case transition must preserve case and customer identity');
+  }
+  assertCaseStatusTransition(current.status, next.status);
+  if (next.outcome === 'CUSTOMER_RECOGNIZED_MERCHANT' &&
+      (next.recommendedActions.length > 0 || next.requiresHumanReview)) {
+    throw new Error('Recognized merchant outcome cannot recommend dispute actions or require review');
+  }
+  if (current.status === 'CLASSIFYING_DISPUTE' && next.status === 'RESOLVED' &&
+      next.outcome !== 'CUSTOMER_RECOGNIZED_MERCHANT') {
+    throw new Error('Early resolution requires customer recognition of the merchant');
+  }
+}

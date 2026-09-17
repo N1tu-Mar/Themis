@@ -2,54 +2,65 @@
 
 ## STATUS
 
-BOOTSTRAP_COMPLETE — ready for parallel workers; full demo dataset remains deferred.
+CORE_MODELS_AND_FIXTURES_COMPLETE — ready for integration and consuming workers.
 
 ## DONE
 
-- Initialized repository at `/Users/nityanthmaramreddy/Downloads/themis` on `integration`.
-- Copied the setup overlay into the root; normalized the supplied trailing-space specification to `prompt.md`.
-- Created specification section 40 directories with tracked placeholders.
-- Added minimal npm workspace, pinned Zod 4.1.5 / TypeScript 5.9.2 and lockfile.
-- Added Python 3.12 project baseline, README, environment template and ignore rules.
-- Implemented all requested types and runtime schemas, including Customer and EvidenceType.
-- Exported standalone JSON Schema 2020-12 documents for Python boundaries.
-- Established all 14 specified CaseStatus values and documented the bootstrap transition map.
-- Added one synthetic customer, transaction, merchant/profile and linked case records/messages/report.
-- Added 16 tests for fixtures, references/totals, invalid shapes, state transitions and schema export alignment.
+- All MVP shared types and Zod validators, plus standalone JSON Schema 2020-12 exports.
+- Exact 14 specification CaseStatus names and documented transition map.
+- Canonical policy action names aligned with specification section 25.
+- Case/report outcome `CUSTOMER_RECOGNIZED_MERCHANT` for the no-dispute scenario.
+- Guarded recognition transition CLASSIFYING_DISPUTE → RESOLVED → CLOSED.
+- Original one-record representative fixtures preserved as a separate dataset.
+- Deterministic demo fixtures: 50 customers, 1,200 transactions, 40 merchants/profiles.
+- Four alias groups, three ordinary recurring merchants, one expiring emerging-risk profile.
+- Twelve historical disputes plus active scenarios A–E, with linked evidence and reports.
+- RCS/SMS inbound and RCS/SMS/EMAIL outbound fixture coverage; nothing sent externally.
+- Fixture integrity validator and negative tests for corrupted references, totals and snapshots.
+- 33 passing contracts tests; no new dependencies or service implementation.
 
 ## CURRENT INTERFACES
 
-- `@themis/contracts`: named domain types, `<Type>Schema` Zod validators.
+- `@themis/contracts`: domain types and `<Type>Schema` runtime validators.
 - `packages/contracts/schemas.json`: schema-name → standalone JSON Schema document.
 - `CASE_STATUS_TRANSITIONS`, `canTransitionCaseStatus`, `assertCaseStatusTransition`.
-- Exact schema fields and conventions: `packages/contracts/src/index.ts` and `packages/contracts/README.md`.
-- Fixtures are deterministic JSON arrays under `fixtures/{customers,transactions,merchants,cases}`.
-- `npm ci`; `npm run build`; `npm test`; `npm run check`.
+- `assertCaseTransition(current, next)`: shape/identity checks and guarded early resolution.
+- `Case.outcome`, `CaseReport.outcome`: optional `CUSTOMER_RECOGNIZED_MERCHANT`.
+- Policy actions: CREATE_DISPUTE, PROVISIONAL_CREDIT, BLOCK_RECURRING_MERCHANT,
+  REPLACE_CARD, DENY_CASE, REVIEW_FUTURE_RECURRING_PAYMENT, REQUEST_MERCHANT_EVIDENCE.
+- `fixtures/**/demo*.json`: independent complete demo dataset; do not combine with examples.
+- `fixtures/scenarios.json`: fixture-only scenario inputs and expected outcomes.
+- Regenerate: build contracts, then `node fixtures/scripts/generate-demo.mjs`.
+- Complete validation: `npm test --workspace @themis/contracts`.
 
 ## KNOWN ISSUES / DECISIONS
 
-- Specification section 14 lists states but not edges; README explicitly documents chosen bootstrap edges.
-- State checks do not authorize actions; services must enforce policy and recorded human approval.
-- Evidence types/sources, review reasons and risk types are open nonempty labels: spec has no exhaustive lists.
-- Auth signal keys follow specification snake_case; absent means unknown.
-- Amounts follow spec major units; compute totals using integer minor units.
-- Runtime schemas validate shapes; services own cross-record integrity and policy checks.
-- No CodeMunch tools were available. Only scoped specification/config discovery was needed.
-- No product services, dashboard code, CDK resources or external integrations implemented.
-- Original overlay and trailing-space specification remain locally preserved and ignored.
+- Replaced bootstrap action names BLOCK_MERCHANT_PAYMENT, CLOSE_CARD, DENY_DISPUTE.
+- Status-only helpers cannot enforce outcome guards; use assertCaseTransition for case documents.
+- Transitions do not authorize account actions; service policy/human approval remains mandatory.
+- Section 14 names states but no edges; chosen edges are documented in the package README.
+- Auth keys follow spec snake_case; absent means unknown. Amounts are major units;
+  fixture totals reconcile through integer cents (all demo currencies are USD).
+- Evidence/source/review/risk labels remain open nonempty strings; spec has no exhaustive lists.
+- Schemas check shapes; fixture validator checks this dataset's relational integrity.
+- Cached-profile/no-browser behavior in scenario E is expected metadata, not implemented services.
+- CodeMunch unavailable; scoped Markdown/source reads used. No external or paid calls.
+- Another worker switched the shared checkout to agent/bank-tools/core-tools mid-session.
+  Final contracts edits were moved to isolated `/private/tmp/themis-contracts-core-models`;
+  the other worker's bank-tools changes were preserved.
 
 ## NEXT 3 TASKS
 
-1. Workers consume these contracts; request boundary changes instead of duplicating domain models.
-2. QA/demo expands fixtures to the modest specification target after service requirements settle.
-3. Integration pins runtime dependencies as workers need them and creates worker branches/worktrees.
+1. Integration merges the contracts worker branch; no push performed in this session.
+2. Workers consume canonical actions, outcome and guarded transitions without duplicating models.
+3. QA/demo implements load/reset and service-level execution using scenarios A–E.
 
 ## LAST TEST COMMAND + RESULT
 
-- `npm run check` — build passed, 16 tests passed, 0 failures.
-- `git diff --check` — passed. Python `pyproject.toml` parsed with Python 3.12.
+- `npm test --workspace @themis/contracts` — build passed; 33 tests passed, 0 failures.
+- `git diff --check` — passed.
 
 ## LAST CODE COMMIT
 
-- `04f8fa1` — workspace, contracts and representative fixtures bootstrap.
-- Final tests/handoff commit: `git log -1 --oneline -- docs/workstreams/contracts.md`.
+- `17d8336` — canonical MVP actions and validated deterministic demo fixtures.
+- Final guards/tests/handoff commit: `git log -1 --oneline -- docs/workstreams/contracts.md`.

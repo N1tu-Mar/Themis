@@ -55,7 +55,7 @@ export function buildDemoFixtures() {
     addTransaction(i % 50, 4 + i % 36, (100 + (i * 137) % 15000) / 100, 1 + i % 90);
   }
   const cases = [], evidence = [], proposals = [], decisions = [], reviews = [], reports = [];
-  function addCase(key, txs, {claimType, classification = claimType, status, confidence = 0.92, summary, contradiction = false, outcome, historical = false}) {
+  function addCase(key, txs, {claimType, classification = claimType, status, confidence = 0.92, summary, contradiction = false, outcome, historical = false, intake = false}) {
     const caseId = `case_demo_${key}`;
     const total = txs.reduce((sum, tx) => sum + Math.round(tx.amount * 100), 0) / 100;
     const requiresHumanReview = status === 'NEEDS_HUMAN_REVIEW';
@@ -64,7 +64,7 @@ export function buildDemoFixtures() {
       caseId, customerId: txs[0].customerId, merchantId: txs[0].merchantId,
       status, createdAt, updatedAt: historical ? at(60) : now, claimType,
       transactionIds: txs.map(tx => tx.transactionId), evidenceIds: [], totalDisputedAmount: total,
-      currency: 'USD', confidence, recommendedActions: outcome ? [] : ['CREATE_DISPUTE'], requiresHumanReview,
+      currency: 'USD', confidence: intake ? null : confidence, recommendedActions: outcome || intake ? [] : ['CREATE_DISPUTE'], requiresHumanReview,
       ...(outcome ? {outcome} : {}),
     };
     const claim = {
@@ -79,14 +79,14 @@ export function buildDemoFixtures() {
     };
     record.evidenceIds.push(claim.evidenceId, ledger.evidenceId);
     evidence.push(claim, ledger);
-    const proposal = outcome ? null : {
+    const proposal = outcome || intake ? null : {
       caseId, classification, confidence, supportingEvidence: [claim.evidenceId, ...(contradiction ? [] : [ledger.evidenceId])],
       contradictoryEvidence: contradiction ? [ledger.evidenceId] : [],
       missingEvidence: requiresHumanReview ? ['merchant_authorization_record'] : [],
       recommendedActions: record.recommendedActions, requiresHumanReview,
     };
     if (proposal) proposals.push(proposal);
-    const policy = outcome || (!historical && !requiresHumanReview) ? [] : [{
+    const policy = outcome || intake || (!historical && !requiresHumanReview) ? [] : [{
       decisionId: `policy_demo_${key}`, caseId, action: 'CREATE_DISPUTE',
       outcome: requiresHumanReview ? 'REQUIRE_HUMAN_REVIEW' : 'ALLOW',
       rationale: requiresHumanReview ? 'Conflicting authentication evidence requires review.' : 'Synthetic transactions confirmed by customer.',
@@ -118,13 +118,7 @@ export function buildDemoFixtures() {
   const b = addCase('b', canceled, {claimType: 'RECURRING_PAYMENT_AFTER_CANCELLATION', status: 'RESOLUTION_PROPOSED', summary: `I canceled this subscription on ${at(35)} but was charged again.`});
   const c = addCase('c', recognized, {claimType: 'UNRECOGNIZED_MERCHANT', classification: 'UNRECOGNIZED_MERCHANT', status: 'CLOSED', outcome: 'CUSTOMER_RECOGNIZED_MERCHANT', summary: 'After seeing the canonical merchant name, I remember buying this subscription.'});
   const d = addCase('d', conflicting, {claimType: 'UNAUTHORIZED_TRANSACTION', status: 'NEEDS_HUMAN_REVIEW', confidence: 0.55, contradiction: true, summary: 'I did not authorize this transaction; strong authentication conflicts with the claim.'});
-  const e = addCase('e', memory, {claimType: 'UNRECOGNIZED_MERCHANT', status: 'AWAITING_TRANSACTION_CONFIRMATION', summary: 'A new Asteria charge prompts customer-specific verification using prior synthetic cases.'});
-  // E is intake only: no resolution or policy verdict before customer confirmation.
-  proposals.splice(proposals.findIndex(p => p.caseId === e.caseId), 1);
-  // No policy decision exists for the unconfirmed intake case.
-  const eReport = reports.find(r => r.caseId === e.caseId);
-  eReport.resolution = null; eReport.policyDecisions = [];
-  e.confidence = null; e.recommendedActions = [];
+  const e = addCase('e', memory, {claimType: 'UNRECOGNIZED_MERCHANT', status: 'AWAITING_TRANSACTION_CONFIRMATION', intake: true, summary: 'A new Asteria charge prompts customer-specific verification using prior synthetic cases.'});
   const profiles = merchants.map((merchant, i) => {
     const merchantCases = cases.filter(c => c.merchantId === merchant.merchantId);
     const closedDisputes = merchantCases.filter(c => c.status === 'CLOSED' && !c.outcome);
@@ -149,6 +143,7 @@ export function buildDemoFixtures() {
   }));
   const inbound = scenarioCases.map((record, i) => ({channel: i % 2 ? 'SMS' : 'RCS', customerExternalId: customers[i].phone, messageId: `msg_demo_in_${i + 1}`, text: reports.find(r => r.caseId === record.caseId).customerComplaintSummary, postback: null, receivedAt: now}));
   const outbound = scenarioCases.map((record, i) => ({channel: i % 2 ? 'SMS' : 'RCS', customerExternalId: customers[i].phone, messageId: `msg_demo_out_${i + 1}`, caseId: record.caseId, text: `Synthetic case ${record.caseId}: ${record.status}.`}));
+  outbound.push({channel: 'EMAIL', customerExternalId: customers[3].email, messageId: 'msg_demo_email_1', caseId: d.caseId, subject: 'Synthetic dispute investigation summary', text: `Case ${d.caseId} is awaiting human review. Disputed amount: USD 49.99. No account actions have been taken.`});
   return {
     'customers/demo': customers, 'transactions/demo': transactions, 'merchants/demo': merchants,
     'merchants/demo-profiles': profiles, 'cases/demo': cases, 'cases/demo-evidence': evidence,

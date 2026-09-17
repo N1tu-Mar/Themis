@@ -33,5 +33,13 @@
     "messageId": "msg_demo_out_5",
     "caseId": "case_demo_e",
     "text": "Synthetic case case_demo_e: AWAITING_TRANSACTION_CONFIRMATION."
+  },
+  {
+    "channel": "EMAIL",
+    "customerExternalId": "customer4@example.test",
+    "messageId": "msg_demo_email_1",
+    "caseId": "case_demo_d",
+    "subject": "Synthetic dispute investigation summary",
+    "text": "Case case_demo_d is awaiting human review. Disputed amount: USD 49.99. No account actions have been taken."
   }
 ]
