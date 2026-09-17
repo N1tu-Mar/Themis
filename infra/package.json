@@ -1,0 +1,19 @@
+{
+  "name": "@themis/infra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "synth": "npm run build && cdk synth",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.270.0",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "aws-cdk": "2.1142.0",
+    "typescript": "5.9.2",
+    "@types/node": "22.10.2"
+  }
+}
