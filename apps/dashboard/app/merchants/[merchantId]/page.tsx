@@ -16,9 +16,9 @@ export default async function MerchantDetailPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/merchants" className="text-xs text-slate-400 hover:text-slate-600">← All merchants</Link>
-        <h1 className="mt-1 text-lg font-semibold text-slate-900">{merchant.canonicalName}</h1>
-        <p className="text-sm text-slate-500">{merchant.merchantId}</p>
+        <Link href="/merchants" className="font-mono text-xs text-muted hover:text-ink">← All merchants</Link>
+        <h1 className="mt-1 text-xl font-semibold text-ink">{merchant.canonicalName}</h1>
+        <p className="font-mono text-xs text-muted">{merchant.merchantId}</p>
       </div>
 
       <Card>
@@ -28,15 +28,15 @@ export default async function MerchantDetailPage({ params }: { params: Promise<{
         </div>
       </Card>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <Card>
           <CardHeader title="Case history" />
-          <div className="px-5 py-4 text-sm text-slate-700">
+          <div className="px-5 py-4 text-sm text-ink/85">
             <p>{merchant.caseStatistics.totalCases} total cases</p>
             <p className="mt-1">{merchant.caseStatistics.openCases} open</p>
             <p className="mt-1">{merchant.caseStatistics.resolvedCustomerDisputes} resolved disputes</p>
-            <p className="mt-1 text-slate-500">{recent} in last 90 days</p>
-            {dispute && <p className="mt-1 text-slate-500">Most common: {titleCase(dispute)}</p>}
+            <p className="mt-1 text-muted">{recent} in last 90 days</p>
+            {dispute && <p className="mt-1 text-muted">Most common: {titleCase(dispute)}</p>}
           </div>
         </Card>
 
@@ -45,7 +45,7 @@ export default async function MerchantDetailPage({ params }: { params: Promise<{
           {merchant.billingPatterns.length === 0 ? (
             <EmptyState label="No recurring pattern on file." />
           ) : (
-            <ul className="px-5 py-4 text-sm text-slate-700">
+            <ul className="px-5 py-4 font-mono text-sm text-ink/85">
               {merchant.billingPatterns.map((b, i) => (
                 <li key={i}>{formatMoney(b.amount, 'USD')} every {b.cadenceDays} days</li>
               ))}
@@ -55,10 +55,10 @@ export default async function MerchantDetailPage({ params }: { params: Promise<{
 
         <Card>
           <CardHeader title="Research status" />
-          <div className="px-5 py-4 text-sm text-slate-700">
+          <div className="px-5 py-4 text-sm text-ink/85">
             <p>Last researched</p>
-            <p className="mt-1 font-medium text-slate-900">{formatDate(merchant.updatedAt)}</p>
-            <p className="mt-2 text-xs text-slate-400">Cached — institutional memory reused, not re-researched per case.</p>
+            <p className="mt-1 font-mono font-medium text-ink">{formatDate(merchant.updatedAt)}</p>
+            <p className="mt-2 text-xs text-muted">Cached — institutional memory reused, not re-researched per case.</p>
           </div>
         </Card>
       </div>
@@ -68,12 +68,12 @@ export default async function MerchantDetailPage({ params }: { params: Promise<{
         {merchant.riskSignals.length === 0 ? (
           <EmptyState label="No active risk signals." />
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {merchant.riskSignals.map((r, i) => (
               <li key={i} className="flex items-center justify-between px-5 py-2.5 text-sm">
                 <div>
-                  <p className="font-medium text-slate-800">{titleCase(r.type)}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="font-medium text-ink">{titleCase(r.type)}</p>
+                  <p className="font-mono text-[11px] text-muted">
                     Observed {formatDate(r.observedAt)} · expires {formatDate(r.expiresAt)} · {r.evidenceRefs.length} linked evidence items
                   </p>
                 </div>
@@ -90,16 +90,16 @@ export default async function MerchantDetailPage({ params }: { params: Promise<{
           <EmptyState label="No cases on record for this merchant." />
         ) : (
           <table className="w-full text-left text-sm">
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line">
               {cases.map((c) => (
-                <tr key={c.caseId} className="hover:bg-slate-50">
+                <tr key={c.caseId} className="transition-colors hover:bg-paper">
                   <td className="px-5 py-2.5">
-                    <Link href={`/cases/${c.caseId}`} className="font-medium text-slate-900 hover:underline">{c.caseId}</Link>
+                    <Link href={`/cases/${c.caseId}`} className="font-mono text-[13px] font-medium text-ink hover:underline">{c.caseId}</Link>
                   </td>
                   <td className="px-5 py-2.5"><StatusBadge status={c.status} /></td>
-                  <td className="px-5 py-2.5 text-slate-600">{titleCase(c.claimType)}</td>
-                  <td className="px-5 py-2.5 text-right tabular-nums text-slate-700">{formatMoney(c.totalDisputedAmount, c.currency)}</td>
-                  <td className="px-5 py-2.5 text-slate-400">{formatDate(c.updatedAt)}</td>
+                  <td className="px-5 py-2.5 text-ink/80">{titleCase(c.claimType)}</td>
+                  <td className="px-5 py-2.5 text-right font-mono tabular-nums text-ink/80">{formatMoney(c.totalDisputedAmount, c.currency)}</td>
+                  <td className="px-5 py-2.5 font-mono text-xs text-muted">{formatDate(c.updatedAt)}</td>
                 </tr>
               ))}
             </tbody>

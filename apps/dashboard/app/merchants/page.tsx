@@ -9,13 +9,14 @@ export default function MerchantsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-lg font-semibold text-slate-900">Merchants</h1>
-        <p className="text-sm text-slate-500">{merchants.length} merchants with institutional history</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">Institutional memory</p>
+        <h1 className="mt-1 text-xl font-semibold text-ink">Merchants</h1>
+        <p className="mt-0.5 font-mono text-xs text-muted">{merchants.length} on record</p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-md border border-line bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-line bg-paper font-mono text-[11px] uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-2.5 font-medium">Merchant</th>
               <th className="px-4 py-2.5 font-medium">Known descriptors</th>
@@ -26,34 +27,34 @@ export default function MerchantsPage() {
               <th className="px-4 py-2.5 font-medium">Last researched</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-line">
             {merchants.map((m) => {
               const dispute = commonDisputeType(m.merchantId);
               const recent = recentCaseCount(m.merchantId);
               return (
-                <tr key={m.merchantId} className="hover:bg-slate-50">
+                <tr key={m.merchantId} className="transition-colors hover:bg-paper">
                   <td className="px-4 py-2.5">
-                    <Link href={`/merchants/${m.merchantId}`} className="font-medium text-slate-900 hover:underline">
+                    <Link href={`/merchants/${m.merchantId}`} className="font-medium text-ink hover:underline">
                       {m.canonicalName}
                     </Link>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-slate-500">{m.aliases.slice(0, 2).join(', ')}{m.aliases.length > 2 ? ` +${m.aliases.length - 2}` : ''}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted">{m.aliases.slice(0, 2).join(', ')}{m.aliases.length > 2 ? ` +${m.aliases.length - 2}` : ''}</td>
+                  <td className="px-4 py-2.5 text-right font-mono tabular-nums text-ink/80">
                     {m.caseStatistics.totalCases}
-                    <span className="ml-1 text-xs text-slate-400">({m.caseStatistics.openCases} open)</span>
+                    <span className="ml-1 text-xs text-muted">({m.caseStatistics.openCases} open)</span>
                   </td>
-                  <td className="px-4 py-2.5 text-slate-600">{recent} in last 90d</td>
-                  <td className="px-4 py-2.5 text-slate-700">{dispute ? titleCase(dispute) : '—'}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-ink/70">{recent} in last 90d</td>
+                  <td className="px-4 py-2.5 text-ink/80">{dispute ? titleCase(dispute) : '—'}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {m.riskSignals.length === 0 ? (
-                        <span className="text-xs text-slate-300">None active</span>
+                        <span className="text-xs text-line">None active</span>
                       ) : (
                         m.riskSignals.map((r, i) => <SeverityBadge key={i} severity={r.severity} />)
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-slate-500">{formatDate(m.updatedAt)}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted">{formatDate(m.updatedAt)}</td>
                 </tr>
               );
             })}

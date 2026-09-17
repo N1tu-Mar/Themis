@@ -8,8 +8,9 @@ export default function ReviewPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-lg font-semibold text-slate-900">Human review queue</h1>
-        <p className="text-sm text-slate-500">{queue.length} case(s) escalated by policy — mock actions only, no backend write yet</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">Escalation queue</p>
+        <h1 className="mt-1 text-xl font-semibold text-ink">Human review</h1>
+        <p className="mt-0.5 text-sm text-muted">{queue.length} case(s) escalated by policy — mock actions only, no backend write yet</p>
       </div>
 
       {queue.length === 0 ? (
