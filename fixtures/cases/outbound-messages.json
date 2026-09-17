@@ -1,0 +1,15 @@
+[
+  {
+    "channel": "RCS",
+    "customerExternalId": "+15555550123",
+    "messageId": "msg_out_001",
+    "caseId": "case_001",
+    "text": "Your case is awaiting review.",
+    "suggestions": [
+      {
+        "label": "View case",
+        "postback": "VIEW_CASE:case_001"
+      }
+    ]
+  }
+]

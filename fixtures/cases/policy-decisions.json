@@ -1,0 +1,10 @@
+[
+  {
+    "decisionId": "policy_001",
+    "caseId": "case_001",
+    "action": "CREATE_DISPUTE",
+    "outcome": "REQUIRE_HUMAN_REVIEW",
+    "rationale": "Authorization evidence is missing in this synthetic example.",
+    "decidedAt": "2026-09-17T20:00:00Z"
+  }
+]

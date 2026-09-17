@@ -1,0 +1,1428 @@
+{
+  "Action": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "enum": [
+      "CREATE_DISPUTE",
+      "REVIEW_FUTURE_RECURRING_PAYMENT",
+      "REQUEST_MERCHANT_EVIDENCE",
+      "PROVISIONAL_CREDIT",
+      "BLOCK_MERCHANT_PAYMENT",
+      "CLOSE_CARD",
+      "DENY_DISPUTE"
+    ]
+  },
+  "CaseReport": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "customerComplaintSummary": {
+        "type": "string",
+        "minLength": 1
+      },
+      "transactions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "transactionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "customerId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "merchantId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "descriptor": {
+              "type": "string",
+              "minLength": 1
+            },
+            "amount": {
+              "type": "number",
+              "minimum": 0
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "occurredAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "authSignals": {
+              "type": "object",
+              "properties": {
+                "card_present": {
+                  "type": "boolean"
+                },
+                "cvv_match": {
+                  "type": "boolean"
+                },
+                "avs_match": {
+                  "type": "boolean"
+                },
+                "3ds_status": {
+                  "type": "string",
+                  "enum": [
+                    "AUTHENTICATED",
+                    "FAILED",
+                    "NOT_PERFORMED",
+                    "UNKNOWN"
+                  ]
+                },
+                "wallet_token": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "device_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ip_region": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "merchant_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "recurring_indicator": {
+                  "type": "boolean"
+                },
+                "prior_merchant_relationship": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "transactionId",
+            "customerId",
+            "merchantId",
+            "descriptor",
+            "amount",
+            "currency",
+            "occurredAt",
+            "authSignals"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "totalDisputedAmount": {
+        "type": "number",
+        "minimum": 0
+      },
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Z]{3}$"
+      },
+      "merchant": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "merchantId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "canonicalName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "merchantId",
+              "canonicalName",
+              "aliases"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "classification": {
+        "type": "string",
+        "enum": [
+          "UNAUTHORIZED_TRANSACTION",
+          "UNRECOGNIZED_MERCHANT",
+          "RECURRING_PAYMENT_NOT_AUTHORIZED",
+          "RECURRING_PAYMENT_AFTER_CANCELLATION",
+          "DUPLICATE_TRANSACTION",
+          "WRONG_AMOUNT",
+          "SERVICE_NOT_RECEIVED",
+          "REFUND_NOT_RECEIVED",
+          "OTHER_MERCHANT_DISPUTE",
+          "INSUFFICIENT_INFORMATION"
+        ]
+      },
+      "timeline": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "timestamp",
+            "summary"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "customerStatements": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "evidence": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "evidenceId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "CUSTOMER_CLAIMS",
+                "TRANSACTION_EVIDENCE",
+                "AUTHENTICATION_EVIDENCE",
+                "MERCHANT_IDENTITY",
+                "MERCHANT_HISTORY",
+                "BANK_HISTORY",
+                "EXTERNAL_MERCHANT_INTELLIGENCE",
+                "CONTRADICTORY_EVIDENCE",
+                "MISSING_EVIDENCE"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "claim": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reliability": {
+              "type": "string",
+              "enum": [
+                "LOW",
+                "MEDIUM",
+                "HIGH"
+              ]
+            },
+            "transactionIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "evidenceId",
+            "caseId",
+            "category",
+            "type",
+            "claim",
+            "source",
+            "reliability",
+            "transactionIds"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "missingEvidence": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "resolution": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "caseId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "classification": {
+                "type": "string",
+                "enum": [
+                  "UNAUTHORIZED_TRANSACTION",
+                  "UNRECOGNIZED_MERCHANT",
+                  "RECURRING_PAYMENT_NOT_AUTHORIZED",
+                  "RECURRING_PAYMENT_AFTER_CANCELLATION",
+                  "DUPLICATE_TRANSACTION",
+                  "WRONG_AMOUNT",
+                  "SERVICE_NOT_RECEIVED",
+                  "REFUND_NOT_RECEIVED",
+                  "OTHER_MERCHANT_DISPUTE",
+                  "INSUFFICIENT_INFORMATION"
+                ]
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "supportingEvidence": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "contradictoryEvidence": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "missingEvidence": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "recommendedActions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "CREATE_DISPUTE",
+                    "REVIEW_FUTURE_RECURRING_PAYMENT",
+                    "REQUEST_MERCHANT_EVIDENCE",
+                    "PROVISIONAL_CREDIT",
+                    "BLOCK_MERCHANT_PAYMENT",
+                    "CLOSE_CARD",
+                    "DENY_DISPUTE"
+                  ]
+                }
+              },
+              "requiresHumanReview": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "caseId",
+              "classification",
+              "confidence",
+              "supportingEvidence",
+              "contradictoryEvidence",
+              "missingEvidence",
+              "recommendedActions",
+              "requiresHumanReview"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "actionsTaken": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "CREATE_DISPUTE",
+            "REVIEW_FUTURE_RECURRING_PAYMENT",
+            "REQUEST_MERCHANT_EVIDENCE",
+            "PROVISIONAL_CREDIT",
+            "BLOCK_MERCHANT_PAYMENT",
+            "CLOSE_CARD",
+            "DENY_DISPUTE"
+          ]
+        }
+      },
+      "policyDecisions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "decisionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "CREATE_DISPUTE",
+                "REVIEW_FUTURE_RECURRING_PAYMENT",
+                "REQUEST_MERCHANT_EVIDENCE",
+                "PROVISIONAL_CREDIT",
+                "BLOCK_MERCHANT_PAYMENT",
+                "CLOSE_CARD",
+                "DENY_DISPUTE"
+              ]
+            },
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "ALLOW",
+                "DENY",
+                "REQUIRE_HUMAN_REVIEW"
+              ]
+            },
+            "rationale": {
+              "type": "string",
+              "minLength": 1
+            },
+            "decidedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            }
+          },
+          "required": [
+            "decisionId",
+            "caseId",
+            "action",
+            "outcome",
+            "rationale",
+            "decidedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "humanReviewEvents": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "recommendedNextStep": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "caseId",
+            "reason",
+            "summary",
+            "recommendedNextStep",
+            "evidenceRefs"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "generatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "auditRefs": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "required": [
+      "caseId",
+      "customerComplaintSummary",
+      "transactions",
+      "totalDisputedAmount",
+      "currency",
+      "merchant",
+      "classification",
+      "timeline",
+      "customerStatements",
+      "evidence",
+      "missingEvidence",
+      "resolution",
+      "actionsTaken",
+      "policyDecisions",
+      "humanReviewEvents",
+      "generatedAt",
+      "auditRefs"
+    ],
+    "additionalProperties": false
+  },
+  "Case": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "customerId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "NEW",
+          "INTAKE",
+          "TRANSACTION_MATCHING",
+          "AWAITING_TRANSACTION_CONFIRMATION",
+          "CLASSIFYING_DISPUTE",
+          "INVESTIGATING",
+          "AWAITING_CUSTOMER_INFORMATION",
+          "AWAITING_MERCHANT_EVIDENCE",
+          "RESOLUTION_PROPOSED",
+          "POLICY_REVIEW",
+          "NEEDS_HUMAN_REVIEW",
+          "ACTION_APPROVED",
+          "RESOLVED",
+          "CLOSED"
+        ]
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "claimType": {
+        "type": "string",
+        "enum": [
+          "UNAUTHORIZED_TRANSACTION",
+          "UNRECOGNIZED_MERCHANT",
+          "RECURRING_PAYMENT_NOT_AUTHORIZED",
+          "RECURRING_PAYMENT_AFTER_CANCELLATION",
+          "DUPLICATE_TRANSACTION",
+          "WRONG_AMOUNT",
+          "SERVICE_NOT_RECEIVED",
+          "REFUND_NOT_RECEIVED",
+          "OTHER_MERCHANT_DISPUTE",
+          "INSUFFICIENT_INFORMATION"
+        ]
+      },
+      "merchantId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "transactionIds": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "evidenceIds": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "totalDisputedAmount": {
+        "type": "number",
+        "minimum": 0
+      },
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Z]{3}$"
+      },
+      "confidence": {
+        "anyOf": [
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "recommendedActions": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "CREATE_DISPUTE",
+            "REVIEW_FUTURE_RECURRING_PAYMENT",
+            "REQUEST_MERCHANT_EVIDENCE",
+            "PROVISIONAL_CREDIT",
+            "BLOCK_MERCHANT_PAYMENT",
+            "CLOSE_CARD",
+            "DENY_DISPUTE"
+          ]
+        }
+      },
+      "requiresHumanReview": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "caseId",
+      "customerId",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "claimType",
+      "merchantId",
+      "transactionIds",
+      "evidenceIds",
+      "totalDisputedAmount",
+      "currency",
+      "confidence",
+      "recommendedActions",
+      "requiresHumanReview"
+    ],
+    "additionalProperties": false
+  },
+  "CaseStatus": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "enum": [
+      "NEW",
+      "INTAKE",
+      "TRANSACTION_MATCHING",
+      "AWAITING_TRANSACTION_CONFIRMATION",
+      "CLASSIFYING_DISPUTE",
+      "INVESTIGATING",
+      "AWAITING_CUSTOMER_INFORMATION",
+      "AWAITING_MERCHANT_EVIDENCE",
+      "RESOLUTION_PROPOSED",
+      "POLICY_REVIEW",
+      "NEEDS_HUMAN_REVIEW",
+      "ACTION_APPROVED",
+      "RESOLVED",
+      "CLOSED"
+    ]
+  },
+  "ClaimType": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "enum": [
+      "UNAUTHORIZED_TRANSACTION",
+      "UNRECOGNIZED_MERCHANT",
+      "RECURRING_PAYMENT_NOT_AUTHORIZED",
+      "RECURRING_PAYMENT_AFTER_CANCELLATION",
+      "DUPLICATE_TRANSACTION",
+      "WRONG_AMOUNT",
+      "SERVICE_NOT_RECEIVED",
+      "REFUND_NOT_RECEIVED",
+      "OTHER_MERCHANT_DISPUTE",
+      "INSUFFICIENT_INFORMATION"
+    ]
+  },
+  "Customer": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "customerId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "phone": {
+        "type": "string",
+        "pattern": "^\\+[1-9]\\d{7,14}$"
+      },
+      "email": {
+        "type": "string",
+        "format": "email",
+        "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+      }
+    },
+    "required": [
+      "customerId",
+      "name",
+      "phone",
+      "email"
+    ],
+    "additionalProperties": false
+  },
+  "EvidenceCategory": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "enum": [
+      "CUSTOMER_CLAIMS",
+      "TRANSACTION_EVIDENCE",
+      "AUTHENTICATION_EVIDENCE",
+      "MERCHANT_IDENTITY",
+      "MERCHANT_HISTORY",
+      "BANK_HISTORY",
+      "EXTERNAL_MERCHANT_INTELLIGENCE",
+      "CONTRADICTORY_EVIDENCE",
+      "MISSING_EVIDENCE"
+    ]
+  },
+  "Evidence": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "evidenceId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "CUSTOMER_CLAIMS",
+          "TRANSACTION_EVIDENCE",
+          "AUTHENTICATION_EVIDENCE",
+          "MERCHANT_IDENTITY",
+          "MERCHANT_HISTORY",
+          "BANK_HISTORY",
+          "EXTERNAL_MERCHANT_INTELLIGENCE",
+          "CONTRADICTORY_EVIDENCE",
+          "MISSING_EVIDENCE"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "minLength": 1
+      },
+      "claim": {
+        "type": "string",
+        "minLength": 1
+      },
+      "source": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reliability": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+        ]
+      },
+      "transactionIds": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "required": [
+      "evidenceId",
+      "caseId",
+      "category",
+      "type",
+      "claim",
+      "source",
+      "reliability",
+      "transactionIds"
+    ],
+    "additionalProperties": false
+  },
+  "EvidenceType": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "minLength": 1
+  },
+  "HumanReviewRequest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reason": {
+        "type": "string",
+        "minLength": 1
+      },
+      "summary": {
+        "type": "string",
+        "minLength": 1
+      },
+      "recommendedNextStep": {
+        "type": "string",
+        "minLength": 1
+      },
+      "evidenceRefs": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "required": [
+      "caseId",
+      "reason",
+      "summary",
+      "recommendedNextStep",
+      "evidenceRefs"
+    ],
+    "additionalProperties": false
+  },
+  "InboundMessage": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "channel": {
+        "type": "string",
+        "enum": [
+          "RCS",
+          "SMS",
+          "EMAIL"
+        ]
+      },
+      "customerExternalId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "messageId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "text": {
+        "type": "string"
+      },
+      "postback": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "receivedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      }
+    },
+    "required": [
+      "channel",
+      "customerExternalId",
+      "messageId",
+      "text",
+      "postback",
+      "receivedAt"
+    ],
+    "additionalProperties": false
+  },
+  "MerchantProfile": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "merchantId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "canonicalName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "aliases": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "billingPatterns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "number",
+              "minimum": 0
+            },
+            "cadenceDays": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "amount",
+            "cadenceDays"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "caseStatistics": {
+        "type": "object",
+        "properties": {
+          "totalCases": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "resolvedCustomerDisputes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "openCases": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "totalCases",
+          "resolvedCustomerDisputes",
+          "openCases"
+        ],
+        "additionalProperties": false
+      },
+      "riskSignals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "LOW",
+                "ELEVATED",
+                "HIGH"
+              ]
+            },
+            "observedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "type",
+            "severity",
+            "observedAt",
+            "expiresAt",
+            "evidenceRefs"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      }
+    },
+    "required": [
+      "merchantId",
+      "canonicalName",
+      "aliases",
+      "billingPatterns",
+      "caseStatistics",
+      "riskSignals",
+      "updatedAt"
+    ],
+    "additionalProperties": false
+  },
+  "MerchantRiskSignal": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "minLength": 1
+      },
+      "severity": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "ELEVATED",
+          "HIGH"
+        ]
+      },
+      "observedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "expiresAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "evidenceRefs": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "required": [
+      "type",
+      "severity",
+      "observedAt",
+      "expiresAt",
+      "evidenceRefs"
+    ],
+    "additionalProperties": false
+  },
+  "Merchant": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "merchantId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "canonicalName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "aliases": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "required": [
+      "merchantId",
+      "canonicalName",
+      "aliases"
+    ],
+    "additionalProperties": false
+  },
+  "MessageChannel": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "enum": [
+      "RCS",
+      "SMS",
+      "EMAIL"
+    ]
+  },
+  "OutboundMessage": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "channel": {
+        "type": "string",
+        "enum": [
+          "RCS",
+          "SMS",
+          "EMAIL"
+        ]
+      },
+      "customerExternalId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "messageId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "text": {
+        "type": "string",
+        "minLength": 1
+      },
+      "subject": {
+        "type": "string",
+        "minLength": 1
+      },
+      "suggestions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "postback": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "label",
+            "postback"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "channel",
+      "customerExternalId",
+      "messageId",
+      "caseId",
+      "text"
+    ],
+    "additionalProperties": false
+  },
+  "PolicyDecision": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "decisionId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "CREATE_DISPUTE",
+          "REVIEW_FUTURE_RECURRING_PAYMENT",
+          "REQUEST_MERCHANT_EVIDENCE",
+          "PROVISIONAL_CREDIT",
+          "BLOCK_MERCHANT_PAYMENT",
+          "CLOSE_CARD",
+          "DENY_DISPUTE"
+        ]
+      },
+      "outcome": {
+        "type": "string",
+        "enum": [
+          "ALLOW",
+          "DENY",
+          "REQUIRE_HUMAN_REVIEW"
+        ]
+      },
+      "rationale": {
+        "type": "string",
+        "minLength": 1
+      },
+      "decidedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      }
+    },
+    "required": [
+      "decisionId",
+      "caseId",
+      "action",
+      "outcome",
+      "rationale",
+      "decidedAt"
+    ],
+    "additionalProperties": false
+  },
+  "ResolutionProposal": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "classification": {
+        "type": "string",
+        "enum": [
+          "UNAUTHORIZED_TRANSACTION",
+          "UNRECOGNIZED_MERCHANT",
+          "RECURRING_PAYMENT_NOT_AUTHORIZED",
+          "RECURRING_PAYMENT_AFTER_CANCELLATION",
+          "DUPLICATE_TRANSACTION",
+          "WRONG_AMOUNT",
+          "SERVICE_NOT_RECEIVED",
+          "REFUND_NOT_RECEIVED",
+          "OTHER_MERCHANT_DISPUTE",
+          "INSUFFICIENT_INFORMATION"
+        ]
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "supportingEvidence": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "contradictoryEvidence": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "missingEvidence": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "recommendedActions": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "CREATE_DISPUTE",
+            "REVIEW_FUTURE_RECURRING_PAYMENT",
+            "REQUEST_MERCHANT_EVIDENCE",
+            "PROVISIONAL_CREDIT",
+            "BLOCK_MERCHANT_PAYMENT",
+            "CLOSE_CARD",
+            "DENY_DISPUTE"
+          ]
+        }
+      },
+      "requiresHumanReview": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "caseId",
+      "classification",
+      "confidence",
+      "supportingEvidence",
+      "contradictoryEvidence",
+      "missingEvidence",
+      "recommendedActions",
+      "requiresHumanReview"
+    ],
+    "additionalProperties": false
+  },
+  "TransactionAuthSignals": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "card_present": {
+        "type": "boolean"
+      },
+      "cvv_match": {
+        "type": "boolean"
+      },
+      "avs_match": {
+        "type": "boolean"
+      },
+      "3ds_status": {
+        "type": "string",
+        "enum": [
+          "AUTHENTICATED",
+          "FAILED",
+          "NOT_PERFORMED",
+          "UNKNOWN"
+        ]
+      },
+      "wallet_token": {
+        "type": "string",
+        "minLength": 1
+      },
+      "device_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "ip_region": {
+        "type": "string",
+        "minLength": 1
+      },
+      "merchant_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "recurring_indicator": {
+        "type": "boolean"
+      },
+      "prior_merchant_relationship": {
+        "type": "boolean"
+      }
+    },
+    "additionalProperties": false
+  },
+  "Transaction": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "transactionId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "customerId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "merchantId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "descriptor": {
+        "type": "string",
+        "minLength": 1
+      },
+      "amount": {
+        "type": "number",
+        "minimum": 0
+      },
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Z]{3}$"
+      },
+      "occurredAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "authSignals": {
+        "type": "object",
+        "properties": {
+          "card_present": {
+            "type": "boolean"
+          },
+          "cvv_match": {
+            "type": "boolean"
+          },
+          "avs_match": {
+            "type": "boolean"
+          },
+          "3ds_status": {
+            "type": "string",
+            "enum": [
+              "AUTHENTICATED",
+              "FAILED",
+              "NOT_PERFORMED",
+              "UNKNOWN"
+            ]
+          },
+          "wallet_token": {
+            "type": "string",
+            "minLength": 1
+          },
+          "device_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ip_region": {
+            "type": "string",
+            "minLength": 1
+          },
+          "merchant_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "recurring_indicator": {
+            "type": "boolean"
+          },
+          "prior_merchant_relationship": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "transactionId",
+      "customerId",
+      "merchantId",
+      "descriptor",
+      "amount",
+      "currency",
+      "occurredAt",
+      "authSignals"
+    ],
+    "additionalProperties": false
+  }
+}

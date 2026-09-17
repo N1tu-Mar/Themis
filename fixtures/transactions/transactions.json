@@ -1,0 +1,16 @@
+[
+  {
+    "transactionId": "txn_001",
+    "customerId": "customer_001",
+    "merchantId": "merchant_asteria",
+    "descriptor": "ASTERIA.IO",
+    "amount": 9.99,
+    "currency": "USD",
+    "occurredAt": "2026-09-17T20:00:00Z",
+    "authSignals": {
+      "card_present": false,
+      "recurring_indicator": true,
+      "prior_merchant_relationship": false
+    }
+  }
+]

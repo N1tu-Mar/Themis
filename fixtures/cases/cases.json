@@ -1,0 +1,24 @@
+[
+  {
+    "caseId": "case_001",
+    "customerId": "customer_001",
+    "status": "NEEDS_HUMAN_REVIEW",
+    "createdAt": "2026-09-17T20:00:00Z",
+    "updatedAt": "2026-09-17T20:00:00Z",
+    "claimType": "UNRECOGNIZED_MERCHANT",
+    "merchantId": "merchant_asteria",
+    "transactionIds": [
+      "txn_001"
+    ],
+    "evidenceIds": [
+      "ev_001"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.65,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": true
+  }
+]

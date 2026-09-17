@@ -1,0 +1,35 @@
+[
+  {
+    "merchantId": "merchant_asteria",
+    "canonicalName": "Asteria Digital",
+    "aliases": [
+      "ASTERIA.IO",
+      "ASTERIA*PREMIUM",
+      "ASTDIGITAL",
+      "ASTERIA SUB"
+    ],
+    "billingPatterns": [
+      {
+        "amount": 9.99,
+        "cadenceDays": 7
+      }
+    ],
+    "caseStatistics": {
+      "totalCases": 1,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 1
+    },
+    "riskSignals": [
+      {
+        "type": "UNRECOGNIZED_RECURRING_SPIKE",
+        "severity": "ELEVATED",
+        "observedAt": "2026-09-17T20:00:00Z",
+        "expiresAt": "2026-10-17T20:00:00Z",
+        "evidenceRefs": [
+          "ev_001"
+        ]
+      }
+    ],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  }
+]

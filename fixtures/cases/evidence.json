@@ -1,0 +1,14 @@
+[
+  {
+    "evidenceId": "ev_001",
+    "caseId": "case_001",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "RECURRING_PATTERN",
+    "claim": "The synthetic charge is marked recurring; repetition has not yet been established.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_001"
+    ]
+  }
+]

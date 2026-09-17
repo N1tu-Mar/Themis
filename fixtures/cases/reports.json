@@ -1,0 +1,103 @@
+[
+  {
+    "caseId": "case_001",
+    "customerComplaintSummary": "Customer does not recognize an Asteria charge.",
+    "transactions": [
+      {
+        "transactionId": "txn_001",
+        "customerId": "customer_001",
+        "merchantId": "merchant_asteria",
+        "descriptor": "ASTERIA.IO",
+        "amount": 9.99,
+        "currency": "USD",
+        "occurredAt": "2026-09-17T20:00:00Z",
+        "authSignals": {
+          "card_present": false,
+          "recurring_indicator": true,
+          "prior_merchant_relationship": false
+        }
+      }
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "merchant": {
+      "merchantId": "merchant_asteria",
+      "canonicalName": "Asteria Digital",
+      "aliases": [
+        "ASTERIA.IO",
+        "ASTERIA*PREMIUM",
+        "ASTDIGITAL",
+        "ASTERIA SUB"
+      ]
+    },
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "timeline": [
+      {
+        "timestamp": "2026-09-17T20:00:00Z",
+        "summary": "Synthetic case sent for review."
+      }
+    ],
+    "customerStatements": [
+      "I do not recognize this charge."
+    ],
+    "evidence": [
+      {
+        "evidenceId": "ev_001",
+        "caseId": "case_001",
+        "category": "TRANSACTION_EVIDENCE",
+        "type": "RECURRING_PATTERN",
+        "claim": "The synthetic charge is marked recurring; repetition has not yet been established.",
+        "source": "BANK_LEDGER",
+        "reliability": "HIGH",
+        "transactionIds": [
+          "txn_001"
+        ]
+      }
+    ],
+    "missingEvidence": [
+      "merchant_authorization_record"
+    ],
+    "resolution": {
+      "caseId": "case_001",
+      "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+      "confidence": 0.65,
+      "supportingEvidence": [
+        "ev_001"
+      ],
+      "contradictoryEvidence": [],
+      "missingEvidence": [
+        "merchant_authorization_record"
+      ],
+      "recommendedActions": [
+        "CREATE_DISPUTE"
+      ],
+      "requiresHumanReview": true
+    },
+    "actionsTaken": [],
+    "policyDecisions": [
+      {
+        "decisionId": "policy_001",
+        "caseId": "case_001",
+        "action": "CREATE_DISPUTE",
+        "outcome": "REQUIRE_HUMAN_REVIEW",
+        "rationale": "Authorization evidence is missing in this synthetic example.",
+        "decidedAt": "2026-09-17T20:00:00Z"
+      }
+    ],
+    "humanReviewEvents": [
+      {
+        "caseId": "case_001",
+        "reason": "MISSING_REQUIRED_EVIDENCE",
+        "summary": "Authorization has not been established.",
+        "recommendedNextStep": "Request merchant authorization evidence.",
+        "evidenceRefs": [
+          "ev_001"
+        ]
+      }
+    ],
+    "generatedAt": "2026-09-17T20:00:00Z",
+    "auditRefs": [
+      "audit_001"
+    ]
+  }
+]
