@@ -1,0 +1,106 @@
+[
+  {
+    "decisionId": "policy_demo_history_001",
+    "caseId": "case_demo_history_001",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_002",
+    "caseId": "case_demo_history_002",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_003",
+    "caseId": "case_demo_history_003",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_004",
+    "caseId": "case_demo_history_004",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_005",
+    "caseId": "case_demo_history_005",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_006",
+    "caseId": "case_demo_history_006",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_007",
+    "caseId": "case_demo_history_007",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_008",
+    "caseId": "case_demo_history_008",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_009",
+    "caseId": "case_demo_history_009",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_010",
+    "caseId": "case_demo_history_010",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_011",
+    "caseId": "case_demo_history_011",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_history_012",
+    "caseId": "case_demo_history_012",
+    "action": "CREATE_DISPUTE",
+    "outcome": "ALLOW",
+    "rationale": "Synthetic transactions confirmed by customer.",
+    "decidedAt": "2026-07-19T20:00:00.000Z"
+  },
+  {
+    "decisionId": "policy_demo_d",
+    "caseId": "case_demo_d",
+    "action": "CREATE_DISPUTE",
+    "outcome": "REQUIRE_HUMAN_REVIEW",
+    "rationale": "Conflicting authentication evidence requires review.",
+    "decidedAt": "2026-09-17T20:00:00Z"
+  }
+]

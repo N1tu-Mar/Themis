@@ -13,3 +13,13 @@ Normal path: NEW → INTAKE → TRANSACTION_MATCHING → AWAITING_TRANSACTION_CO
 A rejected match returns to TRANSACTION_MATCHING. Customer-information waits return to the requesting stage (the caller retains that context). Merchant-evidence waits return to INVESTIGATING. Investigation/intake/matching can escalate to NEEDS_HUMAN_REVIEW; policy can do so too. Human review can return to investigation, propose a revised resolution, or record approval before ACTION_APPROVED. CLOSED has no outgoing edges and repeated statuses are not transitions. Persistence/idempotency belongs to the service worker. A human-review approval edge requires recorded human approval; this package validates shape and workflow only.
 
 The schemas validate individual documents, not database references, policy correctness, or monetary reconciliation. Services own those checks. Case reports retain structured evidence and concise rationale, never hidden chain-of-thought.
+
+`AuditEventSchema` is the shared representation of the section 45 audit record. It captures a concise action, tool and result, with optional policy fields for controlled operations. `CaseReport.auditRefs` point to these records. It intentionally has no field for prompts, conversation history or model reasoning.
+
+## MVP completion
+
+`Case.outcome` and `CaseReport.outcome` can record `CUSTOMER_RECOGNIZED_MERCHANT` (scenario C). The state map permits CLASSIFYING_DISPUTE → RESOLVED for that outcome, then RESOLVED → CLOSED. Use `assertCaseTransition(current, next)` to check document shapes, preserve case/customer identity, and guard early resolution. Recognition must have no recommended dispute actions or review request. The status-only helpers cannot enforce document-level guards. All account-impacting actions still require service policy enforcement.
+
+Canonical action names follow section 25: `CREATE_DISPUTE`, `PROVISIONAL_CREDIT`, `BLOCK_RECURRING_MERCHANT`, `REPLACE_CARD`, `DENY_CASE`, with `REVIEW_FUTURE_RECURRING_PAYMENT` from section 23 and `REQUEST_MERCHANT_EVIDENCE` from section 24. The bootstrap-only names `BLOCK_MERCHANT_PAYMENT`, `CLOSE_CARD`, and `DENY_DISPUTE` were replaced before service implementation. Workers should consume `ActionSchema`, not maintain aliases.
+
+The complete modest fixture set lives in `fixtures/**/demo*.json`, separate from the original single-record examples. See `fixtures/README.md` to regenerate it. These are scenario snapshots and expected inputs/results for other workers, not an implemented agent, ledger, policy engine or message transport.

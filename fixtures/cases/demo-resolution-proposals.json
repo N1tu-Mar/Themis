@@ -1,0 +1,230 @@
+[
+  {
+    "caseId": "case_demo_history_001",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_001_claim",
+      "ev_demo_history_001_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_002",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_002_claim",
+      "ev_demo_history_002_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_003",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_003_claim",
+      "ev_demo_history_003_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_004",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_004_claim",
+      "ev_demo_history_004_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_005",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_005_claim",
+      "ev_demo_history_005_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_006",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_006_claim",
+      "ev_demo_history_006_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_007",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_007_claim",
+      "ev_demo_history_007_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_008",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_008_claim",
+      "ev_demo_history_008_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_009",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_009_claim",
+      "ev_demo_history_009_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_010",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_010_claim",
+      "ev_demo_history_010_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_011",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_011_claim",
+      "ev_demo_history_011_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_012",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_history_012_claim",
+      "ev_demo_history_012_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_a",
+    "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_a_claim",
+      "ev_demo_a_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_b",
+    "classification": "RECURRING_PAYMENT_AFTER_CANCELLATION",
+    "confidence": 0.92,
+    "supportingEvidence": [
+      "ev_demo_b_claim",
+      "ev_demo_b_ledger"
+    ],
+    "contradictoryEvidence": [],
+    "missingEvidence": [],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_d",
+    "classification": "UNAUTHORIZED_TRANSACTION",
+    "confidence": 0.55,
+    "supportingEvidence": [
+      "ev_demo_d_claim"
+    ],
+    "contradictoryEvidence": [
+      "ev_demo_d_ledger"
+    ],
+    "missingEvidence": [
+      "merchant_authorization_record"
+    ],
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": true
+  }
+]

@@ -7,9 +7,96 @@
       "REVIEW_FUTURE_RECURRING_PAYMENT",
       "REQUEST_MERCHANT_EVIDENCE",
       "PROVISIONAL_CREDIT",
-      "BLOCK_MERCHANT_PAYMENT",
-      "CLOSE_CARD",
-      "DENY_DISPUTE"
+      "BLOCK_RECURRING_MERCHANT",
+      "REPLACE_CARD",
+      "DENY_CASE"
+    ]
+  },
+  "AuditEvent": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "eventId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "timestamp": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "actor": {
+        "type": "string",
+        "minLength": 1
+      },
+      "action": {
+        "type": "string",
+        "minLength": 1
+      },
+      "tool": {
+        "type": "string",
+        "minLength": 1
+      },
+      "result": {
+        "type": "string",
+        "enum": [
+          "SUCCESS",
+          "FAILURE",
+          "PENDING"
+        ]
+      },
+      "policyName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "policyOutcome": {
+        "type": "string",
+        "enum": [
+          "ALLOW",
+          "DENY",
+          "REQUIRE_HUMAN_REVIEW"
+        ]
+      },
+      "proposedAction": {
+        "type": "string",
+        "enum": [
+          "CREATE_DISPUTE",
+          "REVIEW_FUTURE_RECURRING_PAYMENT",
+          "REQUEST_MERCHANT_EVIDENCE",
+          "PROVISIONAL_CREDIT",
+          "BLOCK_RECURRING_MERCHANT",
+          "REPLACE_CARD",
+          "DENY_CASE"
+        ]
+      },
+      "inputAmount": {
+        "type": "number",
+        "minimum": 0
+      },
+      "humanApprovalRequired": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "eventId",
+      "caseId",
+      "timestamp",
+      "actor",
+      "action",
+      "tool",
+      "result"
+    ],
+    "additionalProperties": false
+  },
+  "CaseOutcome": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "enum": [
+      "CUSTOMER_RECOGNIZED_MERCHANT"
     ]
   },
   "CaseReport": {
@@ -172,6 +259,12 @@
           "REFUND_NOT_RECEIVED",
           "OTHER_MERCHANT_DISPUTE",
           "INSUFFICIENT_INFORMATION"
+        ]
+      },
+      "outcome": {
+        "type": "string",
+        "enum": [
+          "CUSTOMER_RECOGNIZED_MERCHANT"
         ]
       },
       "timeline": {
@@ -337,9 +430,9 @@
                     "REVIEW_FUTURE_RECURRING_PAYMENT",
                     "REQUEST_MERCHANT_EVIDENCE",
                     "PROVISIONAL_CREDIT",
-                    "BLOCK_MERCHANT_PAYMENT",
-                    "CLOSE_CARD",
-                    "DENY_DISPUTE"
+                    "BLOCK_RECURRING_MERCHANT",
+                    "REPLACE_CARD",
+                    "DENY_CASE"
                   ]
                 }
               },
@@ -373,9 +466,9 @@
             "REVIEW_FUTURE_RECURRING_PAYMENT",
             "REQUEST_MERCHANT_EVIDENCE",
             "PROVISIONAL_CREDIT",
-            "BLOCK_MERCHANT_PAYMENT",
-            "CLOSE_CARD",
-            "DENY_DISPUTE"
+            "BLOCK_RECURRING_MERCHANT",
+            "REPLACE_CARD",
+            "DENY_CASE"
           ]
         }
       },
@@ -399,9 +492,9 @@
                 "REVIEW_FUTURE_RECURRING_PAYMENT",
                 "REQUEST_MERCHANT_EVIDENCE",
                 "PROVISIONAL_CREDIT",
-                "BLOCK_MERCHANT_PAYMENT",
-                "CLOSE_CARD",
-                "DENY_DISPUTE"
+                "BLOCK_RECURRING_MERCHANT",
+                "REPLACE_CARD",
+                "DENY_CASE"
               ]
             },
             "outcome": {
@@ -537,6 +630,12 @@
           "CLOSED"
         ]
       },
+      "outcome": {
+        "type": "string",
+        "enum": [
+          "CUSTOMER_RECOGNIZED_MERCHANT"
+        ]
+      },
       "createdAt": {
         "type": "string",
         "format": "date-time",
@@ -616,9 +715,9 @@
             "REVIEW_FUTURE_RECURRING_PAYMENT",
             "REQUEST_MERCHANT_EVIDENCE",
             "PROVISIONAL_CREDIT",
-            "BLOCK_MERCHANT_PAYMENT",
-            "CLOSE_CARD",
-            "DENY_DISPUTE"
+            "BLOCK_RECURRING_MERCHANT",
+            "REPLACE_CARD",
+            "DENY_CASE"
           ]
         }
       },
@@ -1173,9 +1272,9 @@
           "REVIEW_FUTURE_RECURRING_PAYMENT",
           "REQUEST_MERCHANT_EVIDENCE",
           "PROVISIONAL_CREDIT",
-          "BLOCK_MERCHANT_PAYMENT",
-          "CLOSE_CARD",
-          "DENY_DISPUTE"
+          "BLOCK_RECURRING_MERCHANT",
+          "REPLACE_CARD",
+          "DENY_CASE"
         ]
       },
       "outcome": {
@@ -1264,9 +1363,9 @@
             "REVIEW_FUTURE_RECURRING_PAYMENT",
             "REQUEST_MERCHANT_EVIDENCE",
             "PROVISIONAL_CREDIT",
-            "BLOCK_MERCHANT_PAYMENT",
-            "CLOSE_CARD",
-            "DENY_DISPUTE"
+            "BLOCK_RECURRING_MERCHANT",
+            "REPLACE_CARD",
+            "DENY_CASE"
           ]
         }
       },

@@ -1,0 +1,422 @@
+[
+  {
+    "evidenceId": "ev_demo_history_001_claim",
+    "caseId": "case_demo_history_001",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0031"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_001_ledger",
+    "caseId": "case_demo_history_001",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0031"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_002_claim",
+    "caseId": "case_demo_history_002",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0032"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_002_ledger",
+    "caseId": "case_demo_history_002",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0032"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_003_claim",
+    "caseId": "case_demo_history_003",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0033"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_003_ledger",
+    "caseId": "case_demo_history_003",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0033"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_004_claim",
+    "caseId": "case_demo_history_004",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0034"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_004_ledger",
+    "caseId": "case_demo_history_004",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0034"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_005_claim",
+    "caseId": "case_demo_history_005",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0035"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_005_ledger",
+    "caseId": "case_demo_history_005",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0035"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_006_claim",
+    "caseId": "case_demo_history_006",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0036"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_006_ledger",
+    "caseId": "case_demo_history_006",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0036"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_007_claim",
+    "caseId": "case_demo_history_007",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0037"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_007_ledger",
+    "caseId": "case_demo_history_007",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0037"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_008_claim",
+    "caseId": "case_demo_history_008",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0038"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_008_ledger",
+    "caseId": "case_demo_history_008",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0038"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_009_claim",
+    "caseId": "case_demo_history_009",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0039"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_009_ledger",
+    "caseId": "case_demo_history_009",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0039"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_010_claim",
+    "caseId": "case_demo_history_010",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0040"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_010_ledger",
+    "caseId": "case_demo_history_010",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0040"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_011_claim",
+    "caseId": "case_demo_history_011",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0041"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_011_ledger",
+    "caseId": "case_demo_history_011",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0041"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_012_claim",
+    "caseId": "case_demo_history_012",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "Historical synthetic customer-confirmed recurring-payment dispute.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0042"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_history_012_ledger",
+    "caseId": "case_demo_history_012",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0042"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_a_claim",
+    "caseId": "case_demo_a",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "I do not recognize these six weekly Asteria charges.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0001",
+      "txn_demo_0002",
+      "txn_demo_0003",
+      "txn_demo_0004",
+      "txn_demo_0005",
+      "txn_demo_0006"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_a_ledger",
+    "caseId": "case_demo_a",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "RECURRING_PATTERN",
+    "claim": "6 synthetic charge(s) total USD 59.94.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0001",
+      "txn_demo_0002",
+      "txn_demo_0003",
+      "txn_demo_0004",
+      "txn_demo_0005",
+      "txn_demo_0006"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_b_claim",
+    "caseId": "case_demo_b",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "I canceled this subscription on 2026-08-13T20:00:00.000Z but was charged again.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0008",
+      "txn_demo_0009"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_b_ledger",
+    "caseId": "case_demo_b",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "RECURRING_PATTERN",
+    "claim": "2 synthetic charge(s) total USD 19.98.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0008",
+      "txn_demo_0009"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_c_claim",
+    "caseId": "case_demo_c",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "After seeing the canonical merchant name, I remember buying this subscription.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0010"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_c_ledger",
+    "caseId": "case_demo_c",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 12.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0010"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_d_claim",
+    "caseId": "case_demo_d",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "I did not authorize this transaction; strong authentication conflicts with the claim.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0011"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_d_ledger",
+    "caseId": "case_demo_d",
+    "category": "CONTRADICTORY_EVIDENCE",
+    "type": "STRONG_AUTHENTICATION",
+    "claim": "The synthetic transaction passed CVV, AVS and 3DS; authorization still requires review.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0011"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_e_claim",
+    "caseId": "case_demo_e",
+    "category": "CUSTOMER_CLAIMS",
+    "type": "CUSTOMER_STATEMENT",
+    "claim": "A new Asteria charge prompts customer-specific verification using prior synthetic cases.",
+    "source": "CUSTOMER",
+    "reliability": "MEDIUM",
+    "transactionIds": [
+      "txn_demo_0012"
+    ]
+  },
+  {
+    "evidenceId": "ev_demo_e_ledger",
+    "caseId": "case_demo_e",
+    "category": "TRANSACTION_EVIDENCE",
+    "type": "LEDGER_RECORD",
+    "claim": "1 synthetic charge(s) total USD 9.99.",
+    "source": "BANK_LEDGER",
+    "reliability": "HIGH",
+    "transactionIds": [
+      "txn_demo_0012"
+    ]
+  }
+]

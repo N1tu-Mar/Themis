@@ -1,0 +1,45 @@
+[
+  {
+    "channel": "RCS",
+    "customerExternalId": "+15555550100",
+    "messageId": "msg_demo_out_1",
+    "caseId": "case_demo_a",
+    "text": "Synthetic case case_demo_a: RESOLUTION_PROPOSED."
+  },
+  {
+    "channel": "SMS",
+    "customerExternalId": "+15555550101",
+    "messageId": "msg_demo_out_2",
+    "caseId": "case_demo_b",
+    "text": "Synthetic case case_demo_b: RESOLUTION_PROPOSED."
+  },
+  {
+    "channel": "RCS",
+    "customerExternalId": "+15555550102",
+    "messageId": "msg_demo_out_3",
+    "caseId": "case_demo_c",
+    "text": "Synthetic case case_demo_c: CLOSED."
+  },
+  {
+    "channel": "SMS",
+    "customerExternalId": "+15555550103",
+    "messageId": "msg_demo_out_4",
+    "caseId": "case_demo_d",
+    "text": "Synthetic case case_demo_d: NEEDS_HUMAN_REVIEW."
+  },
+  {
+    "channel": "RCS",
+    "customerExternalId": "+15555550104",
+    "messageId": "msg_demo_out_5",
+    "caseId": "case_demo_e",
+    "text": "Synthetic case case_demo_e: AWAITING_TRANSACTION_CONFIRMATION."
+  },
+  {
+    "channel": "EMAIL",
+    "customerExternalId": "customer4@example.test",
+    "messageId": "msg_demo_email_1",
+    "caseId": "case_demo_d",
+    "subject": "Synthetic dispute investigation summary",
+    "text": "Case case_demo_d is awaiting human review. Disputed amount: USD 49.99. No account actions have been taken."
+  }
+]

@@ -1,0 +1,216 @@
+[
+  {
+    "merchantId": "merchant_demo_001",
+    "canonicalName": "Asteria Digital",
+    "aliases": [
+      "ASTERIA.IO",
+      "ASTERIA*PREMIUM",
+      "ASTDIGITAL",
+      "ASTERIA SUB"
+    ]
+  },
+  {
+    "merchantId": "merchant_demo_002",
+    "canonicalName": "Fictional Meadow Music",
+    "aliases": [
+      "MEADOW*MUSIC",
+      "MEADOW SUB"
+    ]
+  },
+  {
+    "merchantId": "merchant_demo_003",
+    "canonicalName": "Fictional Lantern Fitness",
+    "aliases": [
+      "LANTERN*FIT",
+      "LANTERN GYM"
+    ]
+  },
+  {
+    "merchantId": "merchant_demo_004",
+    "canonicalName": "Fictional Harbor Cloud",
+    "aliases": [
+      "HARBOR*CLOUD",
+      "HARBOR STORAGE"
+    ]
+  },
+  {
+    "merchantId": "merchant_demo_005",
+    "canonicalName": "Fictional Merchant 5",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_006",
+    "canonicalName": "Fictional Merchant 6",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_007",
+    "canonicalName": "Fictional Merchant 7",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_008",
+    "canonicalName": "Fictional Merchant 8",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_009",
+    "canonicalName": "Fictional Merchant 9",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_010",
+    "canonicalName": "Fictional Merchant 10",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_011",
+    "canonicalName": "Fictional Merchant 11",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_012",
+    "canonicalName": "Fictional Merchant 12",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_013",
+    "canonicalName": "Fictional Merchant 13",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_014",
+    "canonicalName": "Fictional Merchant 14",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_015",
+    "canonicalName": "Fictional Merchant 15",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_016",
+    "canonicalName": "Fictional Merchant 16",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_017",
+    "canonicalName": "Fictional Merchant 17",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_018",
+    "canonicalName": "Fictional Merchant 18",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_019",
+    "canonicalName": "Fictional Merchant 19",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_020",
+    "canonicalName": "Fictional Merchant 20",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_021",
+    "canonicalName": "Fictional Merchant 21",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_022",
+    "canonicalName": "Fictional Merchant 22",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_023",
+    "canonicalName": "Fictional Merchant 23",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_024",
+    "canonicalName": "Fictional Merchant 24",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_025",
+    "canonicalName": "Fictional Merchant 25",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_026",
+    "canonicalName": "Fictional Merchant 26",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_027",
+    "canonicalName": "Fictional Merchant 27",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_028",
+    "canonicalName": "Fictional Merchant 28",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_029",
+    "canonicalName": "Fictional Merchant 29",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_030",
+    "canonicalName": "Fictional Merchant 30",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_031",
+    "canonicalName": "Fictional Merchant 31",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_032",
+    "canonicalName": "Fictional Merchant 32",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_033",
+    "canonicalName": "Fictional Merchant 33",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_034",
+    "canonicalName": "Fictional Merchant 34",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_035",
+    "canonicalName": "Fictional Merchant 35",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_036",
+    "canonicalName": "Fictional Merchant 36",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_037",
+    "canonicalName": "Fictional Merchant 37",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_038",
+    "canonicalName": "Fictional Merchant 38",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_039",
+    "canonicalName": "Fictional Merchant 39",
+    "aliases": []
+  },
+  {
+    "merchantId": "merchant_demo_040",
+    "canonicalName": "Fictional Merchant 40",
+    "aliases": []
+  }
+]

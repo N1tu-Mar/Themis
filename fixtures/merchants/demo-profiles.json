@@ -1,0 +1,581 @@
+[
+  {
+    "merchantId": "merchant_demo_001",
+    "canonicalName": "Asteria Digital",
+    "aliases": [
+      "ASTERIA.IO",
+      "ASTERIA*PREMIUM",
+      "ASTDIGITAL",
+      "ASTERIA SUB"
+    ],
+    "billingPatterns": [
+      {
+        "amount": 9.99,
+        "cadenceDays": 7
+      }
+    ],
+    "caseStatistics": {
+      "totalCases": 12,
+      "resolvedCustomerDisputes": 8,
+      "openCases": 4
+    },
+    "riskSignals": [
+      {
+        "type": "UNRECOGNIZED_RECURRING_SPIKE",
+        "severity": "ELEVATED",
+        "observedAt": "2026-07-19T20:00:00.000Z",
+        "expiresAt": "2026-10-17T20:00:00.000Z",
+        "evidenceRefs": [
+          "ev_demo_history_001_claim",
+          "ev_demo_history_001_ledger",
+          "ev_demo_history_002_claim",
+          "ev_demo_history_002_ledger",
+          "ev_demo_history_003_claim",
+          "ev_demo_history_003_ledger",
+          "ev_demo_history_004_claim",
+          "ev_demo_history_004_ledger",
+          "ev_demo_history_005_claim",
+          "ev_demo_history_005_ledger",
+          "ev_demo_history_006_claim",
+          "ev_demo_history_006_ledger",
+          "ev_demo_history_007_claim",
+          "ev_demo_history_007_ledger",
+          "ev_demo_history_008_claim",
+          "ev_demo_history_008_ledger"
+        ]
+      }
+    ],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_002",
+    "canonicalName": "Fictional Meadow Music",
+    "aliases": [
+      "MEADOW*MUSIC",
+      "MEADOW SUB"
+    ],
+    "billingPatterns": [
+      {
+        "amount": 12.99,
+        "cadenceDays": 30
+      }
+    ],
+    "caseStatistics": {
+      "totalCases": 2,
+      "resolvedCustomerDisputes": 1,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_003",
+    "canonicalName": "Fictional Lantern Fitness",
+    "aliases": [
+      "LANTERN*FIT",
+      "LANTERN GYM"
+    ],
+    "billingPatterns": [
+      {
+        "amount": 25,
+        "cadenceDays": 14
+      }
+    ],
+    "caseStatistics": {
+      "totalCases": 1,
+      "resolvedCustomerDisputes": 1,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_004",
+    "canonicalName": "Fictional Harbor Cloud",
+    "aliases": [
+      "HARBOR*CLOUD",
+      "HARBOR STORAGE"
+    ],
+    "billingPatterns": [
+      {
+        "amount": 4.99,
+        "cadenceDays": 7
+      }
+    ],
+    "caseStatistics": {
+      "totalCases": 2,
+      "resolvedCustomerDisputes": 2,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_005",
+    "canonicalName": "Fictional Merchant 5",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_006",
+    "canonicalName": "Fictional Merchant 6",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_007",
+    "canonicalName": "Fictional Merchant 7",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_008",
+    "canonicalName": "Fictional Merchant 8",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_009",
+    "canonicalName": "Fictional Merchant 9",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_010",
+    "canonicalName": "Fictional Merchant 10",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_011",
+    "canonicalName": "Fictional Merchant 11",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_012",
+    "canonicalName": "Fictional Merchant 12",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_013",
+    "canonicalName": "Fictional Merchant 13",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_014",
+    "canonicalName": "Fictional Merchant 14",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_015",
+    "canonicalName": "Fictional Merchant 15",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_016",
+    "canonicalName": "Fictional Merchant 16",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_017",
+    "canonicalName": "Fictional Merchant 17",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_018",
+    "canonicalName": "Fictional Merchant 18",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_019",
+    "canonicalName": "Fictional Merchant 19",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_020",
+    "canonicalName": "Fictional Merchant 20",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_021",
+    "canonicalName": "Fictional Merchant 21",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_022",
+    "canonicalName": "Fictional Merchant 22",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_023",
+    "canonicalName": "Fictional Merchant 23",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_024",
+    "canonicalName": "Fictional Merchant 24",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_025",
+    "canonicalName": "Fictional Merchant 25",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_026",
+    "canonicalName": "Fictional Merchant 26",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_027",
+    "canonicalName": "Fictional Merchant 27",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_028",
+    "canonicalName": "Fictional Merchant 28",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_029",
+    "canonicalName": "Fictional Merchant 29",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_030",
+    "canonicalName": "Fictional Merchant 30",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_031",
+    "canonicalName": "Fictional Merchant 31",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_032",
+    "canonicalName": "Fictional Merchant 32",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_033",
+    "canonicalName": "Fictional Merchant 33",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_034",
+    "canonicalName": "Fictional Merchant 34",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_035",
+    "canonicalName": "Fictional Merchant 35",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_036",
+    "canonicalName": "Fictional Merchant 36",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_037",
+    "canonicalName": "Fictional Merchant 37",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_038",
+    "canonicalName": "Fictional Merchant 38",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_039",
+    "canonicalName": "Fictional Merchant 39",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "merchantId": "merchant_demo_040",
+    "canonicalName": "Fictional Merchant 40",
+    "aliases": [],
+    "billingPatterns": [],
+    "caseStatistics": {
+      "totalCases": 0,
+      "resolvedCustomerDisputes": 0,
+      "openCases": 0
+    },
+    "riskSignals": [],
+    "updatedAt": "2026-09-17T20:00:00Z"
+  }
+]

@@ -1,0 +1,73 @@
+[
+  {
+    "scenarioId": "A",
+    "caseId": "case_demo_a",
+    "customerId": "customer_demo_001",
+    "merchantId": "merchant_demo_001",
+    "transactionIds": [
+      "txn_demo_0001",
+      "txn_demo_0002",
+      "txn_demo_0003",
+      "txn_demo_0004",
+      "txn_demo_0005",
+      "txn_demo_0006"
+    ],
+    "expected": {
+      "classification": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+      "totalDisputedAmount": 59.94
+    }
+  },
+  {
+    "scenarioId": "B",
+    "caseId": "case_demo_b",
+    "customerId": "customer_demo_002",
+    "merchantId": "merchant_demo_001",
+    "transactionIds": [
+      "txn_demo_0008",
+      "txn_demo_0009"
+    ],
+    "expected": {
+      "classification": "RECURRING_PAYMENT_AFTER_CANCELLATION",
+      "canceledAt": "2026-08-13T20:00:00.000Z"
+    }
+  },
+  {
+    "scenarioId": "C",
+    "caseId": "case_demo_c",
+    "customerId": "customer_demo_003",
+    "merchantId": "merchant_demo_002",
+    "transactionIds": [
+      "txn_demo_0010"
+    ],
+    "expected": {
+      "outcome": "CUSTOMER_RECOGNIZED_MERCHANT",
+      "opensDispute": false
+    }
+  },
+  {
+    "scenarioId": "D",
+    "caseId": "case_demo_d",
+    "customerId": "customer_demo_004",
+    "merchantId": "merchant_demo_001",
+    "transactionIds": [
+      "txn_demo_0011"
+    ],
+    "expected": {
+      "status": "NEEDS_HUMAN_REVIEW"
+    }
+  },
+  {
+    "scenarioId": "E",
+    "caseId": "case_demo_e",
+    "customerId": "customer_demo_005",
+    "merchantId": "merchant_demo_001",
+    "transactionIds": [
+      "txn_demo_0012"
+    ],
+    "expected": {
+      "usesCachedProfile": true,
+      "performsWebResearch": false,
+      "requiresCustomerVerification": true
+    }
+  }
+]
