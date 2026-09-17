@@ -123,3 +123,29 @@ test('AWS mode fails closed without clients, identities and durable store', () =
   assert.throws(() => createMessaging({ env: { THEMIS_MODE: 'aws' }, consume: async () => {} }));
   assert.throws(() => createMessaging({ env: { THEMIS_MODE: 'typo' }, consume: async () => {} }));
 });
+test('durable Dynamo claims survive worker instances; only conditional conflicts are duplicates', async () => {
+  const { DynamoIdempotencyStore } = await import('../src/idempotency.ts');
+  const items = new Map<string, unknown>();
+  const client = {
+    putItem: async (p: Record<string, unknown>) => {
+      assert.equal(p.ConditionExpression, 'attribute_not_exists(pk)');
+      const key = JSON.stringify((p.Item as { pk: unknown }).pk);
+      if (items.has(key)) { const error = new Error('duplicate'); error.name = 'ConditionalCheckFailedException'; throw error; }
+      items.set(key, p.Item);
+    },
+    updateItem: async (p: Record<string, unknown>) => { assert.equal(p.ConditionExpression, '#state = :processing'); },
+  };
+  const first = new DynamoIdempotencyStore('messages', client);
+  const second = new DynamoIdempotencyStore('messages', client);
+  assert.equal(await first.claim('customer:id'), true);
+  await first.complete('customer:id');
+  assert.equal(await second.claim('customer:id'), false);
+  await assert.rejects(new DynamoIdempotencyStore('messages', { ...client, putItem: async () => { throw new Error('network'); } }).claim('id'));
+});
+test('all canonical customer choices have identical RCS and textual intent mapping', () => {
+  for (const [i, choice] of CHOICES.entries()) {
+    assert.equal(normalizeChoice({ ...inbound, text: String(i + 1) }, CHOICES).postback, choice.postback);
+    assert.equal(normalizeChoice({ ...inbound, text: choice.label }, CHOICES).postback, choice.postback);
+    assert.equal(normalizeChoice({ ...inbound, text: '', postback: choice.postback }, CHOICES).postback, choice.postback);
+  }
+});

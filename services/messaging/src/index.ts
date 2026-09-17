@@ -22,3 +22,4 @@ export function createMessaging(options: {
     support: options.env.THEMIS_SUPPORT ?? 'support@themis.example',
   };
 }
+export * from './idempotency.ts';
