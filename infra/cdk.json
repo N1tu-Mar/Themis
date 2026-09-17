@@ -1,0 +1,10 @@
+{
+  "app": "node dist/bin/themis.js",
+  "watch": {
+    "include": ["**"],
+    "exclude": ["dist/**", "node_modules/**", "cdk.out/**", "test/**"]
+  },
+  "context": {
+    "@aws-cdk/core:newStyleStackSynthesis": true
+  }
+}
