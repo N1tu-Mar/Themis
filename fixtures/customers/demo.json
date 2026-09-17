@@ -1,0 +1,302 @@
+[
+  {
+    "customerId": "customer_demo_001",
+    "name": "Synthetic Customer 1",
+    "phone": "+15555550100",
+    "email": "customer1@example.test"
+  },
+  {
+    "customerId": "customer_demo_002",
+    "name": "Synthetic Customer 2",
+    "phone": "+15555550101",
+    "email": "customer2@example.test"
+  },
+  {
+    "customerId": "customer_demo_003",
+    "name": "Synthetic Customer 3",
+    "phone": "+15555550102",
+    "email": "customer3@example.test"
+  },
+  {
+    "customerId": "customer_demo_004",
+    "name": "Synthetic Customer 4",
+    "phone": "+15555550103",
+    "email": "customer4@example.test"
+  },
+  {
+    "customerId": "customer_demo_005",
+    "name": "Synthetic Customer 5",
+    "phone": "+15555550104",
+    "email": "customer5@example.test"
+  },
+  {
+    "customerId": "customer_demo_006",
+    "name": "Synthetic Customer 6",
+    "phone": "+15555550105",
+    "email": "customer6@example.test"
+  },
+  {
+    "customerId": "customer_demo_007",
+    "name": "Synthetic Customer 7",
+    "phone": "+15555550106",
+    "email": "customer7@example.test"
+  },
+  {
+    "customerId": "customer_demo_008",
+    "name": "Synthetic Customer 8",
+    "phone": "+15555550107",
+    "email": "customer8@example.test"
+  },
+  {
+    "customerId": "customer_demo_009",
+    "name": "Synthetic Customer 9",
+    "phone": "+15555550108",
+    "email": "customer9@example.test"
+  },
+  {
+    "customerId": "customer_demo_010",
+    "name": "Synthetic Customer 10",
+    "phone": "+15555550109",
+    "email": "customer10@example.test"
+  },
+  {
+    "customerId": "customer_demo_011",
+    "name": "Synthetic Customer 11",
+    "phone": "+15555550110",
+    "email": "customer11@example.test"
+  },
+  {
+    "customerId": "customer_demo_012",
+    "name": "Synthetic Customer 12",
+    "phone": "+15555550111",
+    "email": "customer12@example.test"
+  },
+  {
+    "customerId": "customer_demo_013",
+    "name": "Synthetic Customer 13",
+    "phone": "+15555550112",
+    "email": "customer13@example.test"
+  },
+  {
+    "customerId": "customer_demo_014",
+    "name": "Synthetic Customer 14",
+    "phone": "+15555550113",
+    "email": "customer14@example.test"
+  },
+  {
+    "customerId": "customer_demo_015",
+    "name": "Synthetic Customer 15",
+    "phone": "+15555550114",
+    "email": "customer15@example.test"
+  },
+  {
+    "customerId": "customer_demo_016",
+    "name": "Synthetic Customer 16",
+    "phone": "+15555550115",
+    "email": "customer16@example.test"
+  },
+  {
+    "customerId": "customer_demo_017",
+    "name": "Synthetic Customer 17",
+    "phone": "+15555550116",
+    "email": "customer17@example.test"
+  },
+  {
+    "customerId": "customer_demo_018",
+    "name": "Synthetic Customer 18",
+    "phone": "+15555550117",
+    "email": "customer18@example.test"
+  },
+  {
+    "customerId": "customer_demo_019",
+    "name": "Synthetic Customer 19",
+    "phone": "+15555550118",
+    "email": "customer19@example.test"
+  },
+  {
+    "customerId": "customer_demo_020",
+    "name": "Synthetic Customer 20",
+    "phone": "+15555550119",
+    "email": "customer20@example.test"
+  },
+  {
+    "customerId": "customer_demo_021",
+    "name": "Synthetic Customer 21",
+    "phone": "+15555550120",
+    "email": "customer21@example.test"
+  },
+  {
+    "customerId": "customer_demo_022",
+    "name": "Synthetic Customer 22",
+    "phone": "+15555550121",
+    "email": "customer22@example.test"
+  },
+  {
+    "customerId": "customer_demo_023",
+    "name": "Synthetic Customer 23",
+    "phone": "+15555550122",
+    "email": "customer23@example.test"
+  },
+  {
+    "customerId": "customer_demo_024",
+    "name": "Synthetic Customer 24",
+    "phone": "+15555550123",
+    "email": "customer24@example.test"
+  },
+  {
+    "customerId": "customer_demo_025",
+    "name": "Synthetic Customer 25",
+    "phone": "+15555550124",
+    "email": "customer25@example.test"
+  },
+  {
+    "customerId": "customer_demo_026",
+    "name": "Synthetic Customer 26",
+    "phone": "+15555550125",
+    "email": "customer26@example.test"
+  },
+  {
+    "customerId": "customer_demo_027",
+    "name": "Synthetic Customer 27",
+    "phone": "+15555550126",
+    "email": "customer27@example.test"
+  },
+  {
+    "customerId": "customer_demo_028",
+    "name": "Synthetic Customer 28",
+    "phone": "+15555550127",
+    "email": "customer28@example.test"
+  },
+  {
+    "customerId": "customer_demo_029",
+    "name": "Synthetic Customer 29",
+    "phone": "+15555550128",
+    "email": "customer29@example.test"
+  },
+  {
+    "customerId": "customer_demo_030",
+    "name": "Synthetic Customer 30",
+    "phone": "+15555550129",
+    "email": "customer30@example.test"
+  },
+  {
+    "customerId": "customer_demo_031",
+    "name": "Synthetic Customer 31",
+    "phone": "+15555550130",
+    "email": "customer31@example.test"
+  },
+  {
+    "customerId": "customer_demo_032",
+    "name": "Synthetic Customer 32",
+    "phone": "+15555550131",
+    "email": "customer32@example.test"
+  },
+  {
+    "customerId": "customer_demo_033",
+    "name": "Synthetic Customer 33",
+    "phone": "+15555550132",
+    "email": "customer33@example.test"
+  },
+  {
+    "customerId": "customer_demo_034",
+    "name": "Synthetic Customer 34",
+    "phone": "+15555550133",
+    "email": "customer34@example.test"
+  },
+  {
+    "customerId": "customer_demo_035",
+    "name": "Synthetic Customer 35",
+    "phone": "+15555550134",
+    "email": "customer35@example.test"
+  },
+  {
+    "customerId": "customer_demo_036",
+    "name": "Synthetic Customer 36",
+    "phone": "+15555550135",
+    "email": "customer36@example.test"
+  },
+  {
+    "customerId": "customer_demo_037",
+    "name": "Synthetic Customer 37",
+    "phone": "+15555550136",
+    "email": "customer37@example.test"
+  },
+  {
+    "customerId": "customer_demo_038",
+    "name": "Synthetic Customer 38",
+    "phone": "+15555550137",
+    "email": "customer38@example.test"
+  },
+  {
+    "customerId": "customer_demo_039",
+    "name": "Synthetic Customer 39",
+    "phone": "+15555550138",
+    "email": "customer39@example.test"
+  },
+  {
+    "customerId": "customer_demo_040",
+    "name": "Synthetic Customer 40",
+    "phone": "+15555550139",
+    "email": "customer40@example.test"
+  },
+  {
+    "customerId": "customer_demo_041",
+    "name": "Synthetic Customer 41",
+    "phone": "+15555550140",
+    "email": "customer41@example.test"
+  },
+  {
+    "customerId": "customer_demo_042",
+    "name": "Synthetic Customer 42",
+    "phone": "+15555550141",
+    "email": "customer42@example.test"
+  },
+  {
+    "customerId": "customer_demo_043",
+    "name": "Synthetic Customer 43",
+    "phone": "+15555550142",
+    "email": "customer43@example.test"
+  },
+  {
+    "customerId": "customer_demo_044",
+    "name": "Synthetic Customer 44",
+    "phone": "+15555550143",
+    "email": "customer44@example.test"
+  },
+  {
+    "customerId": "customer_demo_045",
+    "name": "Synthetic Customer 45",
+    "phone": "+15555550144",
+    "email": "customer45@example.test"
+  },
+  {
+    "customerId": "customer_demo_046",
+    "name": "Synthetic Customer 46",
+    "phone": "+15555550145",
+    "email": "customer46@example.test"
+  },
+  {
+    "customerId": "customer_demo_047",
+    "name": "Synthetic Customer 47",
+    "phone": "+15555550146",
+    "email": "customer47@example.test"
+  },
+  {
+    "customerId": "customer_demo_048",
+    "name": "Synthetic Customer 48",
+    "phone": "+15555550147",
+    "email": "customer48@example.test"
+  },
+  {
+    "customerId": "customer_demo_049",
+    "name": "Synthetic Customer 49",
+    "phone": "+15555550148",
+    "email": "customer49@example.test"
+  },
+  {
+    "customerId": "customer_demo_050",
+    "name": "Synthetic Customer 50",
+    "phone": "+15555550149",
+    "email": "customer50@example.test"
+  }
+]

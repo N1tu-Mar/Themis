@@ -48,7 +48,7 @@ export const ClaimTypeSchema = z.enum([
 ]);
 export const ActionSchema = z.enum([
   'CREATE_DISPUTE', 'REVIEW_FUTURE_RECURRING_PAYMENT', 'REQUEST_MERCHANT_EVIDENCE',
-  'PROVISIONAL_CREDIT', 'BLOCK_MERCHANT_PAYMENT', 'CLOSE_CARD', 'DENY_DISPUTE',
+  'PROVISIONAL_CREDIT', 'BLOCK_RECURRING_MERCHANT', 'REPLACE_CARD', 'DENY_CASE',
 ]);
 export const TransactionAuthSignalsSchema = z.strictObject({
   card_present: z.boolean().optional(), cvv_match: z.boolean().optional(),
@@ -77,8 +77,9 @@ export const MerchantProfileSchema = MerchantSchema.extend({
     openCases: z.number().int().nonnegative(),
   }), riskSignals: z.array(MerchantRiskSignalSchema), updatedAt: timestamp,
 });
+export const CaseOutcomeSchema = z.enum(['CUSTOMER_RECOGNIZED_MERCHANT']);
 export const CaseSchema = z.strictObject({
-  caseId: id, customerId: id, status: CaseStatusSchema, createdAt: timestamp, updatedAt: timestamp,
+  caseId: id, customerId: id, status: CaseStatusSchema, outcome: CaseOutcomeSchema.optional(), createdAt: timestamp, updatedAt: timestamp,
   claimType: ClaimTypeSchema, merchantId: id.nullable(), transactionIds: ids, evidenceIds: ids,
   totalDisputedAmount: money, currency, confidence: confidence.nullable(),
   recommendedActions: z.array(ActionSchema), requiresHumanReview: z.boolean(),
@@ -119,7 +120,7 @@ export const OutboundMessageSchema = z.strictObject({
 export const CaseReportSchema = z.strictObject({
   caseId: id, customerComplaintSummary: text, transactions: z.array(TransactionSchema),
   totalDisputedAmount: money, currency, merchant: MerchantSchema.nullable(),
-  classification: ClaimTypeSchema,
+  classification: ClaimTypeSchema, outcome: CaseOutcomeSchema.optional(),
   timeline: z.array(z.strictObject({ timestamp, summary: text })),
   customerStatements: z.array(text), evidence: z.array(EvidenceSchema),
   missingEvidence: z.array(text), resolution: ResolutionProposalSchema.nullable(),
@@ -144,3 +145,5 @@ export type OutboundMessage = z.infer<typeof OutboundMessageSchema>;
 export type CaseReport = z.infer<typeof CaseReportSchema>;
 export type ClaimType = z.infer<typeof ClaimTypeSchema>;
 export type Action = z.infer<typeof ActionSchema>;
+
+export type CaseOutcome = z.infer<typeof CaseOutcomeSchema>;

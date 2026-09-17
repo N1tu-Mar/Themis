@@ -1,0 +1,42 @@
+[
+  {
+    "channel": "RCS",
+    "customerExternalId": "+15555550100",
+    "messageId": "msg_demo_in_1",
+    "text": "I do not recognize these six weekly Asteria charges.",
+    "postback": null,
+    "receivedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "channel": "SMS",
+    "customerExternalId": "+15555550101",
+    "messageId": "msg_demo_in_2",
+    "text": "I canceled this subscription on 2026-08-13T20:00:00.000Z but was charged again.",
+    "postback": null,
+    "receivedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "channel": "RCS",
+    "customerExternalId": "+15555550102",
+    "messageId": "msg_demo_in_3",
+    "text": "After seeing the canonical merchant name, I remember buying this subscription.",
+    "postback": null,
+    "receivedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "channel": "SMS",
+    "customerExternalId": "+15555550103",
+    "messageId": "msg_demo_in_4",
+    "text": "I did not authorize this transaction; strong authentication conflicts with the claim.",
+    "postback": null,
+    "receivedAt": "2026-09-17T20:00:00Z"
+  },
+  {
+    "channel": "RCS",
+    "customerExternalId": "+15555550104",
+    "messageId": "msg_demo_in_5",
+    "text": "A new Asteria charge prompts customer-specific verification using prior synthetic cases.",
+    "postback": null,
+    "receivedAt": "2026-09-17T20:00:00Z"
+  }
+]

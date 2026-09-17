@@ -1,0 +1,396 @@
+[
+  {
+    "caseId": "case_demo_history_001",
+    "customerId": "customer_demo_011",
+    "merchantId": "merchant_demo_001",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0031"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_001_claim",
+      "ev_demo_history_001_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_002",
+    "customerId": "customer_demo_012",
+    "merchantId": "merchant_demo_001",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0032"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_002_claim",
+      "ev_demo_history_002_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_003",
+    "customerId": "customer_demo_013",
+    "merchantId": "merchant_demo_001",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0033"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_003_claim",
+      "ev_demo_history_003_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_004",
+    "customerId": "customer_demo_014",
+    "merchantId": "merchant_demo_001",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0034"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_004_claim",
+      "ev_demo_history_004_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_005",
+    "customerId": "customer_demo_015",
+    "merchantId": "merchant_demo_001",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0035"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_005_claim",
+      "ev_demo_history_005_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_006",
+    "customerId": "customer_demo_016",
+    "merchantId": "merchant_demo_001",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0036"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_006_claim",
+      "ev_demo_history_006_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_007",
+    "customerId": "customer_demo_017",
+    "merchantId": "merchant_demo_001",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0037"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_007_claim",
+      "ev_demo_history_007_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_008",
+    "customerId": "customer_demo_018",
+    "merchantId": "merchant_demo_001",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0038"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_008_claim",
+      "ev_demo_history_008_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_009",
+    "customerId": "customer_demo_019",
+    "merchantId": "merchant_demo_004",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0039"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_009_claim",
+      "ev_demo_history_009_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_010",
+    "customerId": "customer_demo_020",
+    "merchantId": "merchant_demo_002",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0040"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_010_claim",
+      "ev_demo_history_010_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_011",
+    "customerId": "customer_demo_021",
+    "merchantId": "merchant_demo_003",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0041"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_011_claim",
+      "ev_demo_history_011_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_history_012",
+    "customerId": "customer_demo_022",
+    "merchantId": "merchant_demo_004",
+    "status": "CLOSED",
+    "createdAt": "2026-07-14T20:00:00.000Z",
+    "updatedAt": "2026-07-19T20:00:00.000Z",
+    "claimType": "RECURRING_PAYMENT_NOT_AUTHORIZED",
+    "transactionIds": [
+      "txn_demo_0042"
+    ],
+    "evidenceIds": [
+      "ev_demo_history_012_claim",
+      "ev_demo_history_012_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_a",
+    "customerId": "customer_demo_001",
+    "merchantId": "merchant_demo_001",
+    "status": "RESOLUTION_PROPOSED",
+    "createdAt": "2026-09-17T20:00:00Z",
+    "updatedAt": "2026-09-17T20:00:00Z",
+    "claimType": "UNRECOGNIZED_MERCHANT",
+    "transactionIds": [
+      "txn_demo_0001",
+      "txn_demo_0002",
+      "txn_demo_0003",
+      "txn_demo_0004",
+      "txn_demo_0005",
+      "txn_demo_0006"
+    ],
+    "evidenceIds": [
+      "ev_demo_a_claim",
+      "ev_demo_a_ledger"
+    ],
+    "totalDisputedAmount": 59.94,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_b",
+    "customerId": "customer_demo_002",
+    "merchantId": "merchant_demo_001",
+    "status": "RESOLUTION_PROPOSED",
+    "createdAt": "2026-09-17T20:00:00Z",
+    "updatedAt": "2026-09-17T20:00:00Z",
+    "claimType": "RECURRING_PAYMENT_AFTER_CANCELLATION",
+    "transactionIds": [
+      "txn_demo_0008",
+      "txn_demo_0009"
+    ],
+    "evidenceIds": [
+      "ev_demo_b_claim",
+      "ev_demo_b_ledger"
+    ],
+    "totalDisputedAmount": 19.98,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": false
+  },
+  {
+    "caseId": "case_demo_c",
+    "customerId": "customer_demo_003",
+    "merchantId": "merchant_demo_002",
+    "status": "CLOSED",
+    "createdAt": "2026-09-17T20:00:00Z",
+    "updatedAt": "2026-09-17T20:00:00Z",
+    "claimType": "UNRECOGNIZED_MERCHANT",
+    "transactionIds": [
+      "txn_demo_0010"
+    ],
+    "evidenceIds": [
+      "ev_demo_c_claim",
+      "ev_demo_c_ledger"
+    ],
+    "totalDisputedAmount": 12.99,
+    "currency": "USD",
+    "confidence": 0.92,
+    "recommendedActions": [],
+    "requiresHumanReview": false,
+    "outcome": "CUSTOMER_RECOGNIZED_MERCHANT"
+  },
+  {
+    "caseId": "case_demo_d",
+    "customerId": "customer_demo_004",
+    "merchantId": "merchant_demo_001",
+    "status": "NEEDS_HUMAN_REVIEW",
+    "createdAt": "2026-09-17T20:00:00Z",
+    "updatedAt": "2026-09-17T20:00:00Z",
+    "claimType": "UNAUTHORIZED_TRANSACTION",
+    "transactionIds": [
+      "txn_demo_0011"
+    ],
+    "evidenceIds": [
+      "ev_demo_d_claim",
+      "ev_demo_d_ledger"
+    ],
+    "totalDisputedAmount": 49.99,
+    "currency": "USD",
+    "confidence": 0.55,
+    "recommendedActions": [
+      "CREATE_DISPUTE"
+    ],
+    "requiresHumanReview": true
+  },
+  {
+    "caseId": "case_demo_e",
+    "customerId": "customer_demo_005",
+    "merchantId": "merchant_demo_001",
+    "status": "AWAITING_TRANSACTION_CONFIRMATION",
+    "createdAt": "2026-09-17T20:00:00Z",
+    "updatedAt": "2026-09-17T20:00:00Z",
+    "claimType": "UNRECOGNIZED_MERCHANT",
+    "transactionIds": [
+      "txn_demo_0012"
+    ],
+    "evidenceIds": [
+      "ev_demo_e_claim",
+      "ev_demo_e_ledger"
+    ],
+    "totalDisputedAmount": 9.99,
+    "currency": "USD",
+    "confidence": null,
+    "recommendedActions": [],
+    "requiresHumanReview": false
+  }
+]
