@@ -2,7 +2,7 @@
 
 ## STATUS
 
-IN_PROGRESS — all 5 required routes working against shared-contract fixtures; demo-ready.
+DONE — all 5 required routes working against shared-contract fixtures, visual identity pass complete, demo-ready.
 
 ## DONE
 
@@ -15,6 +15,8 @@ IN_PROGRESS — all 5 required routes working against shared-contract fixtures; 
 - `/merchants/[merchantId]` — canonical identity, all aliases, billing patterns, case history aggregate, risk signals, research/cache status, related cases.
 - `/review` — human review queue, client-side mock Approve/Reject/Request-more-evidence buttons (no backend write).
 - 14 tests (vitest + RTL): adapter typed-data + lookups, case list/detail rendering, merchant aliases/risk signals, review queue, empty state.
+- Design pass: IBM Plex Sans/Mono type system, restrained ink/paper/trust(green)/flag(amber)/alert(red) palette — deliberately not the cream+terracotta or near-black+neon AI defaults. Signature element: a bordered "audit stamp" (`components/ui.tsx` → `Stamp`) for policy decisions (ALLOW/DENY/REQUIRE_HUMAN_REVIEW). Mono tabular figures for all IDs/amounts/timestamps (real ledger convention). Responsive grid collapse on detail pages, reduced-motion guard, visible focus rings, styled not-found page.
+- Moved all frontend work to a dedicated worktree (`/private/tmp/themis-frontend-dashboard`) after a cross-session isolation incident — see git log for details. Do not work directly in the shared repo root.
 
 ## CURRENT INTERFACES
 
@@ -29,7 +31,7 @@ IN_PROGRESS — all 5 required routes working against shared-contract fixtures; 
 
 ## NEXT 3 TASKS
 
-1. If time remains: swap `/review` mock actions for a small client store so a decision persists across nav (still no backend).
+1. Nothing required — stop condition met. If time remains: swap `/review` mock actions for a small client store so a decision persists across nav (still no backend).
 2. Add a settings/admin page only if time remains — explicitly deprioritized per prompt.
 3. Once integration wires a real API, replace fixture imports in `lib/data/adapter.ts` with fetch calls, keep function signatures stable.
 
@@ -40,4 +42,4 @@ IN_PROGRESS — all 5 required routes working against shared-contract fixtures; 
 
 ## LAST CODE COMMIT
 
-- `2308154` feat(frontend): scaffold dashboard and add case investigation view
+- `d4dd764` feat(frontend): distinctive audit-ledger visual identity for the console
