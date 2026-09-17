@@ -1,7 +1,0 @@
-{
-  "/cases/page": "app/cases/page.js",
-  "/cases/[caseId]/page": "app/cases/[caseId]/page.js",
-  "/merchants/page": "app/merchants/page.js",
-  "/merchants/[merchantId]/page": "app/merchants/[merchantId]/page.js",
-  "/review/page": "app/review/page.js"
-}
