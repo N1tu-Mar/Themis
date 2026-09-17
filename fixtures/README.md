@@ -19,7 +19,7 @@ The demo includes four alias groups, three ordinary legitimate recurring merchan
 - D: strong authentication contradicts the claim; human review, no action taken.
 - E: a new customer charge after multiple historical Asteria disputes, cached profile available, customer verification still pending. Expected cache/no-research behavior must be implemented by service workers.
 
-Inbound fixtures cover RCS/SMS. Outbound fixtures cover RCS/SMS and an informational EMAIL summary, without sending anything. IDs and times are deterministic. Historical case timestamps predate all active scenarios. Actions are synthetic snapshots, with matching policy allowances for actions already taken.
+Inbound fixtures cover RCS/SMS. Outbound fixtures cover RCS/SMS and an informational EMAIL summary, without sending anything. Linked audit events cover each demo case and contain only concise action/tool/result fields. IDs and times are deterministic. Historical case timestamps predate all active scenarios. Actions are synthetic snapshots, with matching policy allowances for actions already taken.
 
 From the repository root:
 

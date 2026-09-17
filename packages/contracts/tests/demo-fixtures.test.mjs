@@ -17,6 +17,7 @@ test('complete fixture set is deterministic, committed and valid', async () => {
   assert.equal(generated['transactions/demo'].length, 1200);
   assert.equal(generated['merchants/demo'].length, 40);
   assert.equal(generated['cases/demo'].filter(record => record.caseId.includes('history')).length, 12);
+  assert.equal(generated['cases/demo-audit-events'].length, generated['cases/demo-reports'].length);
   assert.equal(generated['merchants/demo'].filter(record => record.aliases.length > 0).length, 4);
   assert.equal(generated['merchants/demo-profiles'].filter(record => record.riskSignals.length > 0).length, 1);
   for (const customer of generated['customers/demo']) {
@@ -115,6 +116,7 @@ const mutations = [
   ['disputed total mismatch', data => { data['cases/demo'][0].totalDisputedAmount += 1; }],
   ['evidence ownership mismatch', data => { data['cases/demo'][0].evidenceIds = data['cases/demo'][1].evidenceIds; }],
   ['report transactions mismatch', data => { data['cases/demo-reports'][0].transactions[0].amount += 1; }],
+  ['report audit mismatch', data => { data['cases/demo-reports'][0].auditRefs = ['missing_audit']; }],
   ['taken action lacks policy allowance', data => { data['cases/demo-reports'][0].policyDecisions[0].outcome = 'DENY'; }],
   ['ambiguous merchant alias', data => { data['merchants/demo'][1].aliases.push(data['merchants/demo'][0].aliases[0]); }],
   ['risk expiry precedes observation', data => { data['merchants/demo-profiles'][0].riskSignals[0].expiresAt = '2020-01-01T00:00:00Z'; }],

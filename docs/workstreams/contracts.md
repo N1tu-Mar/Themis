@@ -11,6 +11,7 @@ CORE_MODELS_AND_FIXTURES_COMPLETE — ready for integration and consuming worker
 - Canonical policy action names aligned with specification section 25.
 - Case/report outcome `CUSTOMER_RECOGNIZED_MERCHANT` for the no-dispute scenario.
 - Guarded recognition transition CLASSIFYING_DISPUTE → RESOLVED → CLOSED.
+- Shared `AuditEvent` schema with concise policy-aware operational audit fields.
 - Original one-record representative fixtures preserved as a separate dataset.
 - Deterministic demo fixtures: 50 customers, 1,200 transactions, 40 merchants/profiles.
 - Four alias groups, three ordinary recurring merchants, one expiring emerging-risk profile.
@@ -26,6 +27,7 @@ CORE_MODELS_AND_FIXTURES_COMPLETE — ready for integration and consuming worker
 - `CASE_STATUS_TRANSITIONS`, `canTransitionCaseStatus`, `assertCaseStatusTransition`.
 - `assertCaseTransition(current, next)`: shape/identity checks and guarded early resolution.
 - `Case.outcome`, `CaseReport.outcome`: optional `CUSTOMER_RECOGNIZED_MERCHANT`.
+- `AuditEventSchema`: event/action/tool/result plus optional controlled-action policy context.
 - Policy actions: CREATE_DISPUTE, PROVISIONAL_CREDIT, BLOCK_RECURRING_MERCHANT,
   REPLACE_CARD, DENY_CASE, REVIEW_FUTURE_RECURRING_PAYMENT, REQUEST_MERCHANT_EVIDENCE.
 - `fixtures/**/demo*.json`: independent complete demo dataset; do not combine with examples.
@@ -44,6 +46,8 @@ CORE_MODELS_AND_FIXTURES_COMPLETE — ready for integration and consuming worker
 - Evidence/source/review/risk labels remain open nonempty strings; spec has no exhaustive lists.
 - Schemas check shapes; fixture validator checks this dataset's relational integrity.
 - Cached-profile/no-browser behavior in scenario E is expected metadata, not implemented services.
+- Section 31 idempotency is a service persistence responsibility; it has no prescribed shared record
+  shape, so contracts preserves message IDs but does not invent an idempotency-store model.
 - CodeMunch unavailable; scoped Markdown/source reads used. No external or paid calls.
 - Another worker switched the shared checkout to agent/bank-tools/core-tools mid-session.
   Final contracts edits were moved to isolated `/private/tmp/themis-contracts-core-models`;
@@ -57,10 +61,10 @@ CORE_MODELS_AND_FIXTURES_COMPLETE — ready for integration and consuming worker
 
 ## LAST TEST COMMAND + RESULT
 
-- `npm test --workspace @themis/contracts` — build passed; 33 tests passed, 0 failures.
+- `npm test --workspace @themis/contracts` — build passed; 35 tests passed, 0 failures.
 - `git diff --check` — passed.
 
 ## LAST CODE COMMIT
 
 - `17d8336` — canonical MVP actions and validated deterministic demo fixtures.
-- Final guards/tests/handoff commit: `git log -1 --oneline -- docs/workstreams/contracts.md`.
+- Final audit-contract/tests/handoff commit: `git log -1 --oneline -- docs/workstreams/contracts.md`.

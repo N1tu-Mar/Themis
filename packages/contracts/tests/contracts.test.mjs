@@ -14,6 +14,7 @@ const fixtureSchemas = {
   'cases/evidence': c.EvidenceSchema,
   'cases/resolution-proposals': c.ResolutionProposalSchema,
   'cases/policy-decisions': c.PolicyDecisionSchema,
+  'cases/audit-events': c.AuditEventSchema,
   'cases/human-review-requests': c.HumanReviewRequestSchema,
   'cases/inbound-messages': c.InboundMessageSchema,
   'cases/outbound-messages': c.OutboundMessageSchema,
@@ -48,7 +49,7 @@ test('fixture references and disputed totals are consistent', async () => {
     assert.equal(e.caseId, caseRecord.caseId);
     for (const ref of e.transactionIds) assert.ok(caseRecord.transactionIds.includes(ref));
   }
-  for (const path of ['cases/resolution-proposals', 'cases/policy-decisions', 'cases/human-review-requests', 'cases/reports', 'cases/outbound-messages']) {
+  for (const path of ['cases/resolution-proposals', 'cases/policy-decisions', 'cases/audit-events', 'cases/human-review-requests', 'cases/reports', 'cases/outbound-messages']) {
     for (const record of data[path]) assert.equal(record.caseId, caseRecord.caseId);
   }
   const [proposal] = data['cases/resolution-proposals'];
@@ -59,6 +60,7 @@ test('fixture references and disputed totals are consistent', async () => {
   assert.deepEqual(report.evidence, evidence);
   assert.deepEqual(report.resolution, proposal);
   assert.deepEqual(report.policyDecisions, data['cases/policy-decisions']);
+  for (const auditRef of report.auditRefs) assert.equal(data['cases/audit-events'].find(event => event.eventId === auditRef)?.caseId, caseRecord.caseId);
   assert.deepEqual(report.humanReviewEvents, data['cases/human-review-requests']);
   assert.equal(report.totalDisputedAmount, caseRecord.totalDisputedAmount);
   assert.deepEqual(report.merchant, merchant);

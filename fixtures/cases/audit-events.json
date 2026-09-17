@@ -1,0 +1,16 @@
+[
+  {
+    "eventId": "audit_001",
+    "caseId": "case_001",
+    "timestamp": "2026-09-17T20:00:00Z",
+    "actor": "THEMIS_AGENT",
+    "action": "CREATE_DISPUTE",
+    "tool": "evaluate_policy",
+    "result": "SUCCESS",
+    "policyName": "themis_demo_policy",
+    "policyOutcome": "REQUIRE_HUMAN_REVIEW",
+    "proposedAction": "CREATE_DISPUTE",
+    "inputAmount": 9.99,
+    "humanApprovalRequired": true
+  }
+]

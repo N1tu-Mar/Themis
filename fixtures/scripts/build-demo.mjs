@@ -54,7 +54,7 @@ export function buildDemoFixtures() {
     const i = transactions.length;
     addTransaction(i % 50, 4 + i % 36, (100 + (i * 137) % 15000) / 100, 1 + i % 90);
   }
-  const cases = [], evidence = [], proposals = [], decisions = [], reviews = [], reports = [];
+  const cases = [], evidence = [], proposals = [], decisions = [], audits = [], reviews = [], reports = [];
   function addCase(key, txs, {claimType, classification = claimType, status, confidence = 0.92, summary, contradiction = false, outcome, historical = false, intake = false}) {
     const caseId = `case_demo_${key}`;
     const total = txs.reduce((sum, tx) => sum + Math.round(tx.amount * 100), 0) / 100;
@@ -93,6 +93,18 @@ export function buildDemoFixtures() {
       decidedAt: record.updatedAt,
     }];
     decisions.push(...policy);
+    const audit = {
+      eventId: `audit_demo_${key}`, caseId, timestamp: record.updatedAt,
+      actor: 'THEMIS_AGENT', action: policy[0]?.action ?? 'CASE_INTAKE',
+      tool: policy[0] ? 'evaluate_policy' : 'case_intake',
+      result: status === 'AWAITING_TRANSACTION_CONFIRMATION' ? 'PENDING' : 'SUCCESS',
+      ...(policy[0] ? {
+        policyName: 'themis_demo_policy', policyOutcome: policy[0].outcome,
+        proposedAction: policy[0].action, inputAmount: total,
+        humanApprovalRequired: requiresHumanReview,
+      } : {}),
+    };
+    audits.push(audit);
     const review = requiresHumanReview ? [{
       caseId, reason: 'CONFLICTING_AUTHORIZATION_EVIDENCE', summary,
       recommendedNextStep: 'Review merchant authorization evidence without assuming customer dishonesty.',
@@ -105,7 +117,7 @@ export function buildDemoFixtures() {
       ...(outcome ? {outcome} : {}), timeline: [{timestamp: createdAt, summary}], customerStatements: [summary],
       evidence: [claim, ledger], missingEvidence: proposal?.missingEvidence ?? [], resolution: proposal,
       actionsTaken: status === 'CLOSED' && !outcome ? ['CREATE_DISPUTE'] : [],
-      policyDecisions: policy, humanReviewEvents: review, generatedAt: record.updatedAt, auditRefs: [`audit_demo_${key}`],
+      policyDecisions: policy, humanReviewEvents: review, generatedAt: record.updatedAt, auditRefs: [audit.eventId],
     };
     cases.push(record); reports.push(report);
     return record;
@@ -148,6 +160,7 @@ export function buildDemoFixtures() {
     'customers/demo': customers, 'transactions/demo': transactions, 'merchants/demo': merchants,
     'merchants/demo-profiles': profiles, 'cases/demo': cases, 'cases/demo-evidence': evidence,
     'cases/demo-resolution-proposals': proposals, 'cases/demo-policy-decisions': decisions,
+    'cases/demo-audit-events': audits,
     'cases/demo-human-review-requests': reviews, 'cases/demo-reports': reports,
     'cases/demo-inbound-messages': inbound, 'cases/demo-outbound-messages': outbound,
     'scenarios': scenarios,

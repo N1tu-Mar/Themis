@@ -104,6 +104,16 @@ export const PolicyDecisionSchema = z.strictObject({
   decisionId: id, caseId: id, action: ActionSchema,
   outcome: z.enum(['ALLOW', 'DENY', 'REQUIRE_HUMAN_REVIEW']), rationale: text, decidedAt: timestamp,
 });
+/** A concise, structured audit event. It must never contain model reasoning. */
+export const AuditEventSchema = z.strictObject({
+  eventId: id, caseId: id, timestamp, actor: text, action: text, tool: text,
+  result: z.enum(['SUCCESS', 'FAILURE', 'PENDING']),
+  policyName: text.optional(),
+  policyOutcome: z.enum(['ALLOW', 'DENY', 'REQUIRE_HUMAN_REVIEW']).optional(),
+  proposedAction: ActionSchema.optional(),
+  inputAmount: money.optional(),
+  humanApprovalRequired: z.boolean().optional(),
+});
 export const HumanReviewRequestSchema = z.strictObject({
   caseId: id, reason: text, summary: text, recommendedNextStep: text, evidenceRefs: ids,
 });
@@ -139,6 +149,7 @@ export type Evidence = z.infer<typeof EvidenceSchema>;
 export type EvidenceType = z.infer<typeof EvidenceTypeSchema>;
 export type ResolutionProposal = z.infer<typeof ResolutionProposalSchema>;
 export type PolicyDecision = z.infer<typeof PolicyDecisionSchema>;
+export type AuditEvent = z.infer<typeof AuditEventSchema>;
 export type HumanReviewRequest = z.infer<typeof HumanReviewRequestSchema>;
 export type InboundMessage = z.infer<typeof InboundMessageSchema>;
 export type OutboundMessage = z.infer<typeof OutboundMessageSchema>;

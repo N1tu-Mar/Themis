@@ -14,6 +14,8 @@ A rejected match returns to TRANSACTION_MATCHING. Customer-information waits ret
 
 The schemas validate individual documents, not database references, policy correctness, or monetary reconciliation. Services own those checks. Case reports retain structured evidence and concise rationale, never hidden chain-of-thought.
 
+`AuditEventSchema` is the shared representation of the section 45 audit record. It captures a concise action, tool and result, with optional policy fields for controlled operations. `CaseReport.auditRefs` point to these records. It intentionally has no field for prompts, conversation history or model reasoning.
+
 ## MVP completion
 
 `Case.outcome` and `CaseReport.outcome` can record `CUSTOMER_RECOGNIZED_MERCHANT` (scenario C). The state map permits CLASSIFYING_DISPUTE → RESOLVED for that outcome, then RESOLVED → CLOSED. Use `assertCaseTransition(current, next)` to check document shapes, preserve case/customer identity, and guard early resolution. Recognition must have no recommended dispute actions or review request. The status-only helpers cannot enforce document-level guards. All account-impacting actions still require service policy enforcement.

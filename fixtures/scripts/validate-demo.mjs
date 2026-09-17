@@ -6,6 +6,7 @@ export const demoSchemas = {
   'cases/demo': c.CaseSchema, 'cases/demo-evidence': c.EvidenceSchema,
   'cases/demo-resolution-proposals': c.ResolutionProposalSchema,
   'cases/demo-policy-decisions': c.PolicyDecisionSchema,
+  'cases/demo-audit-events': c.AuditEventSchema,
   'cases/demo-human-review-requests': c.HumanReviewRequestSchema,
   'cases/demo-reports': c.CaseReportSchema,
   'cases/demo-inbound-messages': c.InboundMessageSchema,
@@ -32,6 +33,7 @@ export function validateDemoFixtureSet(data) {
   const transactions = index('transactions/demo', 'transactionId');
   const cases = index('cases/demo', 'caseId');
   const evidence = index('cases/demo-evidence', 'evidenceId');
+  const audits = index('cases/demo-audit-events', 'eventId');
   index('cases/demo-policy-decisions', 'decisionId');
   index('cases/demo-resolution-proposals', 'caseId');
   index('cases/demo-reports', 'caseId');
@@ -65,7 +67,7 @@ export function validateDemoFixtureSet(data) {
     check(record?.evidenceIds.includes(ev.evidenceId), `${ev.evidenceId}: missing owning case reference`);
     check(ev.transactionIds.every(id => record?.transactionIds.includes(id)), `${ev.evidenceId}: transaction outside case`);
   }
-  for (const path of ['cases/demo-resolution-proposals', 'cases/demo-policy-decisions', 'cases/demo-human-review-requests', 'cases/demo-reports', 'cases/demo-outbound-messages']) {
+  for (const path of ['cases/demo-resolution-proposals', 'cases/demo-policy-decisions', 'cases/demo-audit-events', 'cases/demo-human-review-requests', 'cases/demo-reports', 'cases/demo-outbound-messages']) {
     for (const record of data[path]) check(cases.has(record.caseId), `${path}: missing case ${record.caseId}`);
   }
   for (const proposal of data['cases/demo-resolution-proposals']) {
@@ -85,6 +87,7 @@ export function validateDemoFixtureSet(data) {
     check(same(report.resolution, data['cases/demo-resolution-proposals'].find(p => p.caseId === record.caseId) ?? null), `${record.caseId}: report resolution mismatch`);
     check(same(report.policyDecisions, data['cases/demo-policy-decisions'].filter(p => p.caseId === record.caseId)), `${record.caseId}: report policy mismatch`);
     check(same(report.humanReviewEvents, data['cases/demo-human-review-requests'].filter(p => p.caseId === record.caseId)), `${record.caseId}: report review mismatch`);
+    check(report.auditRefs.every(id => audits.get(id)?.caseId === record.caseId), `${record.caseId}: report audit mismatch`);
     check(report.actionsTaken.every(action => report.policyDecisions.some(p => p.action === action && p.outcome === 'ALLOW')), `${record.caseId}: taken action lacks policy allowance`);
   }
   const descriptors = new Map();
