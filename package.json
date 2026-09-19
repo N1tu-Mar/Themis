@@ -11,6 +11,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "check": "npm run build && npm test"
+    "test:python": "python3 -m pytest -q",
+    "check": "npm run build && npm test && npm run test:python"
   }
 }
