@@ -91,7 +91,8 @@ export class AgentStack extends cdk.Stack {
         ARTIFACTS_BUCKET: data.artifactsBucket.bucketName,
         SES_SENDER_DOMAIN: config.sesSenderDomain,
         ENABLE_SES: String(config.enableSes),
-        PROVISIONAL_CREDIT_AUTO_APPROVE_LIMIT: String(config.provisionalCreditAutoApproveLimit),
+        DEMO_AUTONOMOUS_CREDIT_LIMIT: String(config.provisionalCreditAutoApproveLimit),
+        DEMO_CREDIT_CONFIDENCE_THRESHOLD: String(config.creditConfidenceThreshold),
       },
     });
 
@@ -110,7 +111,8 @@ export class AgentStack extends cdk.Stack {
 
     const financialActionsCedar = fs
       .readFileSync(path.join(__dirname, '../../policies/financial-actions.cedar'), 'utf-8')
-      .replace('__PROVISIONAL_CREDIT_AUTO_APPROVE_LIMIT__', String(config.provisionalCreditAutoApproveLimit));
+      .replace('__DEMO_AUTONOMOUS_CREDIT_LIMIT__', String(config.provisionalCreditAutoApproveLimit))
+      .replace('__DEMO_CREDIT_CONFIDENCE_THRESHOLD__', String(config.creditConfidenceThreshold));
     new bedrockagentcore.CfnPolicy(this, 'FinancialActionsPolicy', {
       name: 'FinancialActions',
       policyEngineId: policyEngine.attrPolicyEngineId,
@@ -155,7 +157,12 @@ export class AgentStack extends cdk.Stack {
                 description: tool.description,
                 inputSchema: {
                   type: 'object',
-                  properties: Object.fromEntries(tool.params.map((p) => [p.name, { type: p.type }])),
+                  properties: Object.fromEntries(tool.params.map((p) => [p.name, {
+                    type: p.type,
+                    ...(p.minimum === undefined ? {} : { minimum: p.minimum }),
+                    ...(p.maximum === undefined ? {} : { maximum: p.maximum }),
+                    ...(p.items === undefined ? {} : { items: p.items }),
+                  }])),
                   required: tool.params.filter((p) => p.required).map((p) => p.name),
                 },
               })),
@@ -232,6 +239,7 @@ export class AgentStack extends cdk.Stack {
         THEMIS_MODE: config.themisMode,
         ENABLE_PROACTIVE_DETECTION: String(config.enableProactiveDetection),
         ENABLE_BROWSER_RESEARCH: String(config.enableBrowserResearch),
+        ENABLE_REASONING_ESCALATION: String(config.enableReasoningEscalation),
         BEDROCK_MODEL_ID_FAST: config.bedrockModelIdFast,
         BEDROCK_MODEL_ID_REASONING: config.bedrockModelIdReasoning,
         GATEWAY_IDENTIFIER: this.gateway.attrGatewayIdentifier,

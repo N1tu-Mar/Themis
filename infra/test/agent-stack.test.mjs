@@ -5,6 +5,7 @@ import { Template, Match } from 'aws-cdk-lib/assertions';
 import { DataStack } from '../dist/stacks/data-stack.js';
 import { AgentStack } from '../dist/stacks/agent-stack.js';
 import { loadConfig } from '../dist/config/env.js';
+import { IDEMPOTENT_TOOL_NAMES, TOOL_CONTRACT_VERSION, TOOL_DEFINITIONS } from '../dist/config/tool-schemas.js';
 
 function synth(overrides = {}) {
   const app = new cdk.App();
@@ -39,6 +40,17 @@ test('exposes all 20 tools from AGENT TOOL SURFACE (prompt.md #11) on the Gatewa
   }
 });
 
+test('freezes one versioned invocation contract with idempotency on every mutating tool', () => {
+  assert.match(TOOL_CONTRACT_VERSION, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(new Set(TOOL_DEFINITIONS.map((tool) => tool.name)).size, 20);
+  for (const name of IDEMPOTENT_TOOL_NAMES) {
+    const tool = TOOL_DEFINITIONS.find((candidate) => candidate.name === name);
+    assert.ok(tool, `missing tool ${name}`);
+    const idempotency = tool.params.find((param) => param.name === 'idempotencyKey');
+    assert.deepEqual(idempotency, { name: 'idempotencyKey', type: 'string', required: true });
+  }
+});
+
 test('provisions a policy engine with a financial-actions and a default-deny policy', () => {
   const t = synth();
   t.resourceCountIs('AWS::BedrockAgentCore::PolicyEngine', 1);
@@ -47,11 +59,16 @@ test('provisions a policy engine with a financial-actions and a default-deny pol
   t.hasResourceProperties('AWS::BedrockAgentCore::Policy', { Name: 'DenyArbitraryActions' });
 });
 
-test('substitutes the configured provisional-credit auto-approve limit into the Cedar policy', () => {
-  const t = synth({ provisionalCreditAutoApproveLimit: 123 });
+test('aligns Cedar financial gates with deterministic banking policy thresholds', () => {
+  const t = synth({ provisionalCreditAutoApproveLimit: 123, creditConfidenceThreshold: 0.91 });
   const policies = t.findResources('AWS::BedrockAgentCore::Policy');
   const financial = Object.values(policies).find((p) => p.Properties.Name === 'FinancialActions');
-  assert.match(financial.Properties.Definition.Cedar.Statement, /context\.amount < 123/);
+  const cedar = financial.Properties.Definition.Cedar.Statement;
+  assert.match(cedar, /context\.amount <= 123/);
+  assert.match(cedar, /context\.confidence >= 0\.91/);
+  assert.match(cedar, /context\.customerRequested == true/);
+  assert.match(cedar, /context\.hasConfirmedTransactions == true/);
+  assert.doesNotMatch(cedar, /action == Action::"propose_card_replacement"/);
 });
 
 test('provisions Memory for conversational continuity, not as the financial system of record', () => {

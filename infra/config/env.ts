@@ -15,10 +15,12 @@ export interface ThemisConfig {
   readonly enableSes: boolean;
   readonly enableBrowserResearch: boolean;
   readonly enableProactiveDetection: boolean;
+  readonly enableReasoningEscalation: boolean;
   readonly bedrockModelIdFast: string;
   readonly bedrockModelIdReasoning: string;
   readonly sesSenderDomain: string;
   readonly provisionalCreditAutoApproveLimit: number;
+  readonly creditConfidenceThreshold: number;
 }
 
 function bool(name: string, fallback: boolean): boolean {
@@ -27,8 +29,15 @@ function bool(name: string, fallback: boolean): boolean {
   return raw === '1' || raw.toLowerCase() === 'true';
 }
 
+function finiteNumber(name: string, raw: string | undefined, fallback: number): number {
+  const value = raw === undefined ? fallback : Number(raw);
+  if (!Number.isFinite(value)) throw new Error(`${name} must be a finite number`);
+  return value;
+}
+
 export function loadConfig(): ThemisConfig {
-  const themisMode = (process.env.THEMIS_MODE as ThemisMode) ?? 'local';
+  const themisMode = process.env.THEMIS_MODE ?? 'local';
+  if (themisMode !== 'local' && themisMode !== 'aws') throw new Error('THEMIS_MODE must be local or aws');
 
   // No hardcoded default: the exact Bedrock model ID/ARN to use is a product
   // decision for the agentcore workstream, and Bedrock model IDs change over
@@ -42,6 +51,19 @@ export function loadConfig(): ThemisConfig {
     return `unset-${name.toLowerCase()}`;
   };
 
+  const provisionalCreditAutoApproveLimit = finiteNumber(
+    'DEMO_AUTONOMOUS_CREDIT_LIMIT',
+    process.env.DEMO_AUTONOMOUS_CREDIT_LIMIT ?? process.env.PROVISIONAL_CREDIT_AUTO_APPROVE_LIMIT,
+    50,
+  );
+  const creditConfidenceThreshold = finiteNumber(
+    'DEMO_CREDIT_CONFIDENCE_THRESHOLD', process.env.DEMO_CREDIT_CONFIDENCE_THRESHOLD, 0.8,
+  );
+  if (provisionalCreditAutoApproveLimit < 0) throw new Error('DEMO_AUTONOMOUS_CREDIT_LIMIT must be nonnegative');
+  if (creditConfidenceThreshold < 0 || creditConfidenceThreshold > 1) {
+    throw new Error('DEMO_CREDIT_CONFIDENCE_THRESHOLD must be between 0 and 1');
+  }
+
   return {
     themisMode,
     region: process.env.AWS_REGION ?? process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
@@ -51,9 +73,11 @@ export function loadConfig(): ThemisConfig {
     enableSes: bool('ENABLE_SES', true),
     enableBrowserResearch: bool('ENABLE_BROWSER_RESEARCH', false),
     enableProactiveDetection: bool('ENABLE_PROACTIVE_DETECTION', false),
+    enableReasoningEscalation: bool('ENABLE_REASONING_ESCALATION', true),
     bedrockModelIdFast: requireForAwsMode(process.env.BEDROCK_MODEL_ID_FAST, 'BEDROCK_MODEL_ID_FAST'),
     bedrockModelIdReasoning: requireForAwsMode(process.env.BEDROCK_MODEL_ID_REASONING, 'BEDROCK_MODEL_ID_REASONING'),
     sesSenderDomain: process.env.SES_SENDER_DOMAIN ?? 'themis-demo.example',
-    provisionalCreditAutoApproveLimit: Number(process.env.PROVISIONAL_CREDIT_AUTO_APPROVE_LIMIT ?? '50'),
+    provisionalCreditAutoApproveLimit,
+    creditConfidenceThreshold,
   };
 }

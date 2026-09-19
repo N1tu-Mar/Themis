@@ -128,8 +128,8 @@ test('durable Dynamo claims survive worker instances; only conditional conflicts
   const items = new Map<string, unknown>();
   const client = {
     putItem: async (p: Record<string, unknown>) => {
-      assert.equal(p.ConditionExpression, 'attribute_not_exists(pk)');
-      const key = JSON.stringify((p.Item as { pk: unknown }).pk);
+      assert.equal(p.ConditionExpression, 'attribute_not_exists(idempotencyKey)');
+      const key = JSON.stringify((p.Item as { idempotencyKey: unknown }).idempotencyKey);
       if (items.has(key)) { const error = new Error('duplicate'); error.name = 'ConditionalCheckFailedException'; throw error; }
       items.set(key, p.Item);
     },

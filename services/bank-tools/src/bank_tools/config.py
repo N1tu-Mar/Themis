@@ -1,4 +1,4 @@
-"""Policy thresholds. Env-overridable; keep magic numbers out of policy.py (prompt.md #25)."""
+"""Policy thresholds, configurable through environment variables."""
 import os
 
 from .models import ClaimType

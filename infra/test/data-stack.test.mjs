@@ -22,6 +22,7 @@ test('adds an idempotency table with TTL for retry safety (prompt.md #31)', () =
   const t = synth();
   t.hasResourceProperties('AWS::DynamoDB::Table', {
     TableName: 'ThemisIdempotency',
+    KeySchema: [{ AttributeName: 'idempotencyKey', KeyType: 'HASH' }],
     TimeToLiveSpecification: { AttributeName: 'expiresAt', Enabled: true },
   });
 });

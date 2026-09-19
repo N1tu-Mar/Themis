@@ -27,19 +27,21 @@ def test_create_case_sums_disputed_amount_from_transactions(store):
 
 
 def test_update_case_valid_transition(store):
-    result = tools.update_case(store, case_id="case_seed", patch={"status": "INTAKE"})
+    result = tools.update_case(store, case_id="case_seed", patch={"status": "INTAKE"}, idempotency_key="update-1")
     assert result["status"] == "ok"
     assert result["case"]["status"] == "INTAKE"
 
 
 def test_update_case_rejects_invalid_transition(store):
-    result = tools.update_case(store, case_id="case_seed", patch={"status": "RESOLVED"})
+    result = tools.update_case(store, case_id="case_seed", patch={"status": "RESOLVED"}, idempotency_key="update-2")
     assert result["status"] == "error"
     assert result["error"]["code"] == "INVALID_TRANSITION"
 
 
 def test_update_case_cannot_change_identity(store):
-    result = tools.update_case(store, case_id="case_seed", patch={"customerId": "someone_else"})
+    result = tools.update_case(
+        store, case_id="case_seed", patch={"customerId": "someone_else"}, idempotency_key="update-3",
+    )
     assert result["status"] == "error"
     assert result["error"]["code"] == "VALIDATION_ERROR"
 
@@ -48,12 +50,12 @@ def test_save_evidence_appends_and_is_idempotent_by_id(store):
     first = tools.save_evidence(
         store, case_id="case_seed", category="TRANSACTION_EVIDENCE", evidence_type="RECURRING_PATTERN",
         claim="Charge repeats monthly.", source="BANK_LEDGER", reliability="HIGH",
-        transaction_ids=["txn_001"], evidence_id="ev_fixed",
+        idempotency_key="evidence-1", transaction_ids=["txn_001"], evidence_id="ev_fixed",
     )
     again = tools.save_evidence(
         store, case_id="case_seed", category="TRANSACTION_EVIDENCE", evidence_type="RECURRING_PATTERN",
         claim="Charge repeats monthly.", source="BANK_LEDGER", reliability="HIGH",
-        transaction_ids=["txn_001"], evidence_id="ev_fixed",
+        idempotency_key="evidence-1", transaction_ids=["txn_001"], evidence_id="ev_fixed",
     )
     assert first["evidence"]["evidenceId"] == again["evidence"]["evidenceId"]
     assert tools.get_case(store, case_id="case_seed")["case"]["evidenceIds"] == ["ev_fixed"]

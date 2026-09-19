@@ -39,11 +39,13 @@ ENABLE_SMS_FALLBACK              # default: true
 ENABLE_SES                       # default: true
 ENABLE_BROWSER_RESEARCH          # default: false
 ENABLE_PROACTIVE_DETECTION       # default: false
+ENABLE_REASONING_ESCALATION      # default: true
 
 BEDROCK_MODEL_ID_FAST            # required when THEMIS_MODE=aws, no default
 BEDROCK_MODEL_ID_REASONING       # required when THEMIS_MODE=aws, no default
 SES_SENDER_DOMAIN                # default: themis-demo.example (placeholder - see manual steps)
-PROVISIONAL_CREDIT_AUTO_APPROVE_LIMIT   # default: 50
+DEMO_AUTONOMOUS_CREDIT_LIMIT     # default: 50
+DEMO_CREDIT_CONFIDENCE_THRESHOLD # default: 0.8
 ```
 
 ## Manual steps CDK does not automate

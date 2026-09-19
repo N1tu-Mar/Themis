@@ -1,4 +1,4 @@
-"""Domain dataclasses mirroring packages/contracts/src/index.ts for the Python side.
+"""Domain dataclasses aligned with packages/contracts/src/index.ts for Python.
 
 Stdlib only (no pydantic/jsonschema yet -- see .handoffs/dependencies/ for the
 pending request). StrEnum gives free membership validation: constructing an

@@ -1,4 +1,4 @@
-"""The bank-tools tool surface (prompt.md #11/#12, .claude/rules/bank-tools.md).
+"""The bank-tools tool surface.
 
 Every function takes the store as its first argument (no hidden globals, so
 tests can build a fresh store per case) and returns a compact JSON-able dict
@@ -22,7 +22,7 @@ from .errors import InvalidTransitionError, ToolError
 from .models import (
     ActionType, Case, CaseOutcome, CaseStatus, ClaimType, Evidence, EvidenceCategory,
     HumanReviewRequest, PolicyDecision, PolicyOutcome, Reliability, ValidationError,
-    can_transition_case_status, now_iso, require_currency,
+    can_transition_case_status, now_iso, require_currency, require_money,
 )
 from .policy import evaluate_policy
 from .store import BankToolsStore, new_id
@@ -229,7 +229,13 @@ _IMMUTABLE_CASE_FIELDS = frozenset({"caseId", "customerId"})
 
 
 @_guarded
-def update_case(store: BankToolsStore, *, case_id: str, patch: dict[str, Any]) -> dict[str, Any]:
+def update_case(
+    store: BankToolsStore, *, case_id: str, patch: dict[str, Any], idempotency_key: str,
+) -> dict[str, Any]:
+    key = _require_idempotency_key(idempotency_key, "update_case")
+    cached = store.idempotent_result("update_case", key)
+    if cached is not None:
+        return cached
     current = store.get_case(case_id)
     bad_keys = _IMMUTABLE_CASE_FIELDS & set(patch)
     if bad_keys:
@@ -263,17 +269,26 @@ def update_case(store: BankToolsStore, *, case_id: str, patch: dict[str, Any]) -
     )
     store.replace_case(updated)
     store.record_audit(case_id=case_id, action="UPDATE_CASE", tool="update_case")
-    return _ok(case=updated.to_dict())
+    result = _ok(case=updated.to_dict())
+    store.remember_result("update_case", key, result)
+    return result
 
 
 @_guarded
 def save_evidence(
     store: BankToolsStore, *, case_id: str, category: str, evidence_type: str, claim: str, source: str,
-    reliability: str, transaction_ids: list[str] | None = None, evidence_id: str | None = None,
+    reliability: str, idempotency_key: str, transaction_ids: list[str] | None = None,
+    evidence_id: str | None = None,
 ) -> dict[str, Any]:
+    key = _require_idempotency_key(idempotency_key, "save_evidence")
+    cached = store.idempotent_result("save_evidence", key)
+    if cached is not None:
+        return cached
     case = store.get_case(case_id)
     if evidence_id and evidence_id in case.evidenceIds:
-        return _ok(evidence=store.get_evidence(evidence_id).to_dict())
+        result = _ok(evidence=store.get_evidence(evidence_id).to_dict())
+        store.remember_result("save_evidence", key, result)
+        return result
 
     evidence = Evidence(
         evidenceId=evidence_id or new_id("ev"), caseId=case_id, category=EvidenceCategory(category),
@@ -291,7 +306,9 @@ def save_evidence(
     )
     store.replace_case(updated)
     store.record_audit(case_id=case_id, action="SAVE_EVIDENCE", tool="save_evidence")
-    return _ok(evidence=evidence.to_dict())
+    result = _ok(evidence=evidence.to_dict())
+    store.remember_result("save_evidence", key, result)
+    return result
 
 
 # -- synthetic protected action tools --------------------------------------------
@@ -342,6 +359,7 @@ def propose_provisional_credit(
     store: BankToolsStore, *, case_id: str, amount: float, idempotency_key: str,
 ) -> dict[str, Any]:
     case = store.get_case(case_id)
+    amount = require_money(amount, "amount")
     return _finalize_proposal(
         store, tool="propose_provisional_credit", action=ActionType.PROVISIONAL_CREDIT, case=case,
         idempotency_key=idempotency_key, policy_extra={"amount": amount},

@@ -1,4 +1,4 @@
-"""Bank tools: narrow, typed, idempotent tool surface over synthetic banking records.
+"""Bank tools: narrow, typed, idempotent tools over synthetic banking records.
 
 See docs/workstreams/bank-tools.md and .claude/rules/bank-tools.md for scope.
 No external network/AWS calls happen from this package; storage is in-memory,

@@ -1,4 +1,4 @@
-"""Tool-level error types. Tool functions catch these and return {"status": "error", ...}."""
+"""Tool-level errors returned as structured boundary responses."""
 from __future__ import annotations
 
 

@@ -6,7 +6,7 @@ Provision/configure outside this worker:
 - SNS inbound topics mapped explicitly to RCS/SMS; Lambda subscription with restricted invocation permissions and DLQ.
 - Active RCS agent with two-way SNS destination enabled; an RCS+SMS pool for plain-text fallback.
 - SMS phone number/sender identity for rich per-message fallback (pool identities are invalid here).
-- DynamoDB table with one string partition key `pk`; grant PutItem/UpdateItem to the handler. Do not configure claim expiry; incomplete PROCESSING records require reconciliation before replay.
+- DynamoDB table with one string partition key `idempotencyKey`; grant PutItem/UpdateItem to the handler. Incomplete PROCESSING records require reconciliation before replay.
 - SES verified sender, permitted recipients if sandboxed, and delivery monitoring.
 - AWS SDK client composition/bundling and region/credentials at the Lambda entry point.
 

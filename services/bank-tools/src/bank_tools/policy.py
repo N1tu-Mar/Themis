@@ -1,4 +1,4 @@
-"""Deterministic policy gate for synthetic protected actions (prompt.md #24, #25).
+"""Deterministic policy gate for synthetic protected actions.
 
 Money/account-impacting actions never execute on the LLM's say-so alone: each
 propose_* tool calls `evaluate_policy` first and only simulates the action on

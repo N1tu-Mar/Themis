@@ -1,4 +1,4 @@
-"""In-memory system of record for bank-tools.
+"""In-memory system of record for bank tools.
 
 No external services are invoked (prompt.md #28 assigns DynamoDB/S3 to
 infra; this in-memory store stands in for that until infra provisions it).

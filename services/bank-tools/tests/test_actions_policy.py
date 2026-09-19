@@ -42,6 +42,15 @@ def test_propose_provisional_credit_requires_review_over_limit(store):
     assert result["decision"]["outcome"] == "REQUIRE_HUMAN_REVIEW"
 
 
+def test_propose_provisional_credit_rejects_negative_amount(store):
+    _add_case(store, "case_negative", claimType=ClaimType.DUPLICATE_TRANSACTION, confidence=0.9)
+    result = tools.propose_provisional_credit(
+        store, case_id="case_negative", amount=-1.0, idempotency_key="negative",
+    )
+    assert result["status"] == "error"
+    assert result["error"]["code"] == "VALIDATION_ERROR"
+
+
 def test_propose_payment_block_denies_without_customer_request(store):
     _add_case(store, "case_block")
     result = tools.propose_payment_block(store, case_id="case_block", customer_requested=False, idempotency_key="k1")

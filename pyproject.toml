@@ -6,3 +6,4 @@ dependencies = []
 
 [tool.pytest.ini_options]
 testpaths = ["services"]
+pythonpath = ["services/bank-tools/src"]
