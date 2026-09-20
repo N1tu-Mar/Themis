@@ -6,6 +6,7 @@ THEMIS_MODE=aws:   AgentCore Runtime HTTP contract on :8080 (GET /ping, POST /in
 from __future__ import annotations
 
 import json
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -26,13 +27,28 @@ def build(cfg: Config) -> Orchestrator:
                         research=StubResearch(), config=cfg)
 
 
-def _reply(agent: Orchestrator, payload: dict) -> dict:
+UNVERIFIED_MSG = "I can't match this number to a customer profile, so I can't help with account questions here."
+
+
+def load_directory(path: str | None = None) -> dict[str, str]:
+    """Sender phone -> customerId from a JSON list of {customerId, phone} (synthetic customer fixtures)."""
+    p = Path(path or os.environ.get("THEMIS_CUSTOMER_DIRECTORY") or Path(__file__).resolve().parents[2] / "customers.json")
+    return {c["phone"]: c["customerId"] for c in json.loads(p.read_text(encoding="utf-8"))} if p.exists() else {}
+
+
+def _reply(agent: Orchestrator, payload: dict, directory: dict[str, str] | None = None) -> dict:
+    if "customerExternalId" in payload:  # shared InboundMessage from the messaging service
+        sender = str(payload["customerExternalId"])
+        customer = (directory if directory is not None else load_directory()).get(sender)
+        if customer is None:
+            return {"reply": UNVERIFIED_MSG, "status": "UNVERIFIED", "caseId": None}
+        payload = {"conversationId": sender, "customerId": customer, "message": payload.get("text") or payload.get("postback") or ""}
     r = agent.handle_turn(str(payload.get("conversationId", "local-1")), str(payload.get("customerId", "customer_demo_001")),
                           str(payload.get("message", "")))
     return {"reply": r.text, "status": r.status, "caseId": r.case_id}
 
 
-def run_local(agent: Orchestrator) -> None:
+def run_local(agent: Orchestrator) -> None:  # also the child-process protocol for tests/integration
     print("themis agent ready (local)", file=sys.stderr)
     for line in sys.stdin:
         if line.strip():

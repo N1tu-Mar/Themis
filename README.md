@@ -155,8 +155,10 @@ Requires Node.js 22+ and Python 3.12.
 
 ```sh
 npm ci
-npm run check          # build + test all workspaces
+npm run check          # build + test all workspaces, Python suites, and the local end-to-end composition test
 ```
+
+`npm run check` runs `tests/integration`: an inbound SNS event goes through the messaging runtime to the Python orchestrator, the composed tools adapter (bank-tools + merchant-intel + case workflow) behind the real Cedar policy text, and out to a captured outbound message. No AWS calls. Deploy assets are staged by `scripts/build_assets.py` (run by `npm run build --workspace=infra`); `npm run package:aws --workspace=infra` additionally vendors `boto3` into the AgentCore Runtime asset.
 
 Build contracts and generate the synthetic demo fixtures:
 
@@ -174,4 +176,4 @@ python3.12 -m venv .venv
 
 ## Status
 
-This is a parallel-agent build. `packages/contracts` and `fixtures` are implemented; other services and the dashboard are scaffolded per `docs/workstreams/*.md` and filled in by their owning workstream. See `CLAUDE.md` for the operating rules that govern how work is split and merged, and `prompt.md` for the full specification.
+This is a parallel-agent build. All services are integrated on `main` and covered by the local composition test; see `docs/workstreams/integration.md` for the frozen 20-tool ownership map and what still blocks a real AWS deployment. See `CLAUDE.md` for the operating rules that govern how work is split and merged, and `prompt.md` for the full specification.

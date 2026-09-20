@@ -12,6 +12,7 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:python": "python3 -m pytest -q",
-    "check": "npm run build && npm test && npm run test:python"
+    "check": "npm run build && npm test && npm run test:python && npm run test:integration",
+    "test:integration": "node --test tests/integration/*.test.ts"
   }
 }

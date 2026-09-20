@@ -5,8 +5,8 @@ Five stacks, wired in `bin/themis.ts`:
 | Stack | Owns |
 |---|---|
 | `ThemisData` | DynamoDB tables, idempotency table, S3 artifacts bucket |
-| `ThemisAgent` | Tools-adapter Lambda, AgentCore Gateway/GatewayTarget/Memory/PolicyEngine/Policies/Runtime |
-| `ThemisMessaging` | Inbound SNS topic, normalizer Lambda, SMS two-way IAM role + ConfigurationSet |
+| `ThemisAgent` | Tools-adapter Lambda (staged from `infra/lambda/tools-adapter` + services by `scripts/build_assets.py`), AgentCore Gateway/GatewayTarget/Memory/PolicyEngine/Policies/Runtime |
+| `ThemisMessaging` | Inbound SNS topic(s) (separate RCS topic when both channels are on), messaging Lambda (Node 22 bundle of `services/messaging`), SMS two-way IAM role + ConfigurationSet |
 | `ThemisObservability` | CloudWatch alarms, log-derived metrics, dashboard |
 | `ThemisWeb` | Amplify Hosting app + branch for `apps/dashboard` |
 
@@ -44,6 +44,10 @@ ENABLE_REASONING_ESCALATION      # default: true
 BEDROCK_MODEL_ID_FAST            # required when THEMIS_MODE=aws, no default
 BEDROCK_MODEL_ID_REASONING       # required when THEMIS_MODE=aws, no default
 SES_SENDER_DOMAIN                # default: themis-demo.example (placeholder - see manual steps)
+THEMIS_RCS_POOL_ID               # required when THEMIS_MODE=aws (manually provisioned RCS+SMS pool)
+THEMIS_SMS_IDENTITY              # required when THEMIS_MODE=aws (phone number / sender ID, not a pool)
+THEMIS_SES_FROM                  # required when THEMIS_MODE=aws (verified sender address)
+THEMIS_SUPPORT                   # required when THEMIS_MODE=aws (support contact shown in case emails)
 DEMO_AUTONOMOUS_CREDIT_LIMIT     # default: 50
 DEMO_CREDIT_CONFIDENCE_THRESHOLD # default: 0.8
 ```

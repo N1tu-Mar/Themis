@@ -5,5 +5,5 @@ requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [tool.pytest.ini_options]
-testpaths = ["services"]
+testpaths = ["services", "tests/integration"]
 pythonpath = ["services/bank-tools/src"]

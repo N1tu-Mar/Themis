@@ -1,21 +1,68 @@
-"""Placeholder AgentCore Gateway tool-adapter Lambda.
+"""AgentCore Gateway Lambda target for the 20 Themis tools. Routing lives in router.py.
 
-Infra owns this file only as a bootstrap so `cdk deploy` produces a working
-Lambda before the real tool implementations land. It must be replaced (or
-this directory's contents swapped) by the agentcore/bank-tools/merchant-intel
-workstreams per .handoffs/infra/tools-adapter-contract.md - infra does not
-implement tool business logic.
+Deployed asset layout is produced by scripts/build_lambda_assets.py (handler + router + bank_tools,
+merchant_intel, orchestrator packages + merchant-profiles.json + schemas.json).
 
-It never claims a financial/account-impacting action succeeded: unknown or
-unimplemented tools return status "not_implemented", never "ok".
+Gateway Lambda targets receive the tool arguments as the event and the tool name in the invocation client
+context (`bedrockAgentCoreToolName`, "<target>___<tool>"). The legacy {toolName|name, input|arguments}
+envelope is also accepted so the adapter can be invoked directly.
 """
 import json
+import logging
+import os
+from pathlib import Path
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+_adapter = None
+
+
+class LambdaMessenger:
+    """Synchronous invoke of the messaging Lambda; any failure raises (delivery outcome unknown)."""
+    def __init__(self, client, function_name):
+        self.client, self.function_name = client, function_name
+
+    def __call__(self, request):
+        out = self.client.invoke(FunctionName=self.function_name, InvocationType="RequestResponse",
+                                 Payload=json.dumps(request).encode())
+        body = json.loads(out["Payload"].read() or b"{}")
+        if out.get("FunctionError") or not body.get("messageId"):
+            raise RuntimeError(f"messaging invoke failed: {body.get('errorMessage', 'no messageId')}")
+        return body
+
+
+def _build():
+    import boto3
+    from bank_tools.dynamo_store import DynamoBankToolsStore, Tables
+    from merchant_intel import InMemoryProfileStore, MerchantIntel
+    from orchestrator.workflow import S3ReportStore
+    from router import ToolAdapter
+
+    here = Path(__file__).parent
+    # ponytail: merchant intel cache is per-container and seeded from synthetic profiles; durable ProfileStore when research goes live
+    intel = MerchantIntel(InMemoryProfileStore())
+    intel.load_profiles(json.loads((here / "merchant-profiles.json").read_text(encoding="utf-8")))
+    return ToolAdapter(
+        DynamoBankToolsStore(boto3.client("dynamodb"), Tables.from_env()), intel,
+        S3ReportStore(boto3.client("s3"), os.environ["ARTIFACTS_BUCKET"]),
+        LambdaMessenger(boto3.client("lambda"), os.environ["MESSAGING_FUNCTION_NAME"]))
+
+
+def parse_event(event, context):
+    custom = getattr(getattr(context, "client_context", None), "custom", None) or {}
+    name = custom.get("bedrockAgentCoreToolName")
+    if name:
+        return name.split("___", 1)[-1], event
+    return (event.get("toolName") or event.get("name") or "unknown"), event.get("input", event.get("arguments", {}))
 
 
 def handler(event, context):
-    tool_name = event.get("toolName") or event.get("name") or "unknown"
-    return {
-        "status": "not_implemented",
-        "tool": tool_name,
-        "message": "Tool adapter placeholder - see .handoffs/infra/tools-adapter-contract.md",
-    }
+    global _adapter
+    tool, arguments = parse_event(event, context)
+    try:
+        _adapter = _adapter or _build()
+        return _adapter.call(tool, arguments)
+    except Exception as exc:  # noqa: BLE001 - never leak internals to the model
+        logger.exception("tool %s failed", tool)
+        return {"status": "error", "error": {"code": "INTERNAL_ERROR", "message": type(exc).__name__}}

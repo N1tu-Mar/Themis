@@ -10,7 +10,21 @@ export interface AgentRuntimeRequest {
 }
 
 export interface AgentRuntimeClient {
+  /** Resolves with the runtime's parsed JSON response body (`{reply, status, caseId}`), when it returned one. */
   invokeAgentRuntime(request: AgentRuntimeRequest): Promise<unknown>;
+}
+
+export interface AgentReply {
+  readonly reply: string;
+  readonly status: string;
+  readonly caseId: string | null;
+}
+
+function parseReply(output: unknown): AgentReply | undefined {
+  if (!output || typeof output !== 'object') return undefined;
+  const { reply, status, caseId } = output as Record<string, unknown>;
+  if (typeof reply !== 'string' || !reply.trim()) return undefined;
+  return { reply, status: typeof status === 'string' ? status : 'UNKNOWN', caseId: typeof caseId === 'string' && caseId ? caseId : null };
 }
 
 export class AgentRuntimeInvocationError extends Error {
@@ -42,17 +56,17 @@ export class AgentRuntimeConsumer {
     this.qualifier = qualifier;
   }
 
-  async consume(message: InboundMessage): Promise<void> {
+  async consume(message: InboundMessage): Promise<AgentReply | undefined> {
     const validated = InboundMessageSchema.parse(message);
     try {
-      await this.client.invokeAgentRuntime({
+      return parseReply(await this.client.invokeAgentRuntime({
         agentRuntimeArn: this.agentRuntimeArn,
         runtimeSessionId: await runtimeSessionId(validated.customerExternalId),
         contentType: 'application/json',
         accept: 'application/json',
         payload: new TextEncoder().encode(JSON.stringify(validated)),
         ...(this.qualifier ? { qualifier: this.qualifier } : {}),
-      });
+      }));
     } catch (cause) {
       // Invocation failures are ambiguous. The caller retains its admission claim
       // and surfaces the failure rather than replaying a possibly-completed action.

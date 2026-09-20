@@ -19,6 +19,10 @@ export interface ThemisConfig {
   readonly bedrockModelIdFast: string;
   readonly bedrockModelIdReasoning: string;
   readonly sesSenderDomain: string;
+  readonly rcsPoolId: string;
+  readonly smsIdentity: string;
+  readonly sesFromAddress: string;
+  readonly supportContact: string;
   readonly provisionalCreditAutoApproveLimit: number;
   readonly creditConfidenceThreshold: number;
 }
@@ -77,6 +81,11 @@ export function loadConfig(): ThemisConfig {
     bedrockModelIdFast: requireForAwsMode(process.env.BEDROCK_MODEL_ID_FAST, 'BEDROCK_MODEL_ID_FAST'),
     bedrockModelIdReasoning: requireForAwsMode(process.env.BEDROCK_MODEL_ID_REASONING, 'BEDROCK_MODEL_ID_REASONING'),
     sesSenderDomain: process.env.SES_SENDER_DOMAIN ?? 'themis-demo.example',
+    // Manually provisioned messaging identities (see infra/README.md); the messaging Lambda fails fast without them.
+    rcsPoolId: requireForAwsMode(process.env.THEMIS_RCS_POOL_ID, 'THEMIS_RCS_POOL_ID'),
+    smsIdentity: requireForAwsMode(process.env.THEMIS_SMS_IDENTITY, 'THEMIS_SMS_IDENTITY'),
+    sesFromAddress: requireForAwsMode(process.env.THEMIS_SES_FROM, 'THEMIS_SES_FROM'),
+    supportContact: requireForAwsMode(process.env.THEMIS_SUPPORT, 'THEMIS_SUPPORT'),
     provisionalCreditAutoApproveLimit,
     creditConfidenceThreshold,
   };

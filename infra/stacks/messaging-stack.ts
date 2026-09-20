@@ -9,7 +9,7 @@ import { Construct } from 'constructs';
 import * as path from 'path';
 import type { ThemisConfig } from '../config/env';
 import type { DataStack } from './data-stack';
-import type { AgentStack } from './agent-stack';
+import { MESSAGING_FUNCTION_NAME, type AgentStack } from './agent-stack';
 
 export interface MessagingStackProps extends cdk.StackProps {
   readonly config: ThemisConfig;
@@ -38,7 +38,10 @@ export interface MessagingStackProps extends cdk.StackProps {
  *   a one-field console edit.
  */
 export class MessagingStack extends cdk.Stack {
+  /** SMS inbound topic (or the only enabled channel's topic). */
   public readonly inboundTopic: sns.Topic;
+  /** Distinct RCS topic when both channels are enabled: plain RCS and SMS payloads cannot be told apart. */
+  public readonly rcsInboundTopic: sns.Topic;
   public readonly normalizerFunction: lambda.Function;
   public readonly normalizerLogGroup: logs.LogGroup;
 
@@ -50,6 +53,10 @@ export class MessagingStack extends cdk.Stack {
       topicName: 'ThemisInboundMessaging',
       displayName: 'Themis inbound RCS/SMS messages',
     });
+
+    this.rcsInboundTopic = config.enableRcs && config.enableSmsFallback
+      ? new sns.Topic(this, 'ThemisInboundRcs', { topicName: 'ThemisInboundRcs', displayName: 'Themis inbound RCS messages' })
+      : this.inboundTopic;
 
     const normalizerRole = new iam.Role(this, 'NormalizerRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -64,29 +71,50 @@ export class MessagingStack extends cdk.Stack {
       resources: [agent.runtime.attrAgentRuntimeArn],
     }));
 
+    // Outbound: agent replies and the send_* tools. Identities are provisioned manually (see infra README).
+    normalizerRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['sms-voice:SendTextMessage', 'sms-voice:SendRcsMessage'],
+      resources: [`arn:aws:sms-voice:${this.region}:${this.account}:*`],
+    }));
+    if (config.enableSes) {
+      normalizerRole.addToPolicy(new iam.PolicyStatement({
+        actions: ['ses:SendEmail'],
+        resources: [`arn:aws:ses:${this.region}:${this.account}:identity/${config.sesSenderDomain}`],
+      }));
+    }
+
     this.normalizerLogGroup = new logs.LogGroup(this, 'NormalizerLogGroup', {
       logGroupName: '/aws/lambda/ThemisMessageNormalizer',
       retention: logs.RetentionDays.TWO_WEEKS,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
     this.normalizerFunction = new lambda.Function(this, 'NormalizerFunction', {
-      functionName: 'ThemisMessageNormalizer',
-      runtime: lambda.Runtime.PYTHON_3_12,
-      handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda/message-normalizer')),
+      functionName: MESSAGING_FUNCTION_NAME,
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'index.handler',
+      // esbuild bundle of services/messaging/src/aws-entry.ts (npm --prefix services/messaging run build)
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../services/messaging/dist')),
       role: normalizerRole,
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
       logGroup: this.normalizerLogGroup,
       environment: {
-        THEMIS_MODE: config.themisMode,
+        THEMIS_MODE: 'aws', // the bundled Lambda entry only supports aws; local mode is the in-process test composition
         IDEMPOTENCY_TABLE: data.idempotencyTable.tableName,
         AGENT_RUNTIME_ARN: agent.runtime.attrAgentRuntimeArn,
         ENABLE_RCS: String(config.enableRcs),
         ENABLE_SMS_FALLBACK: String(config.enableSmsFallback),
+        ...(config.enableRcs ? { THEMIS_RCS_TOPIC_ARN: this.rcsInboundTopic.topicArn } : {}),
+        ...(config.enableSmsFallback ? { THEMIS_SMS_TOPIC_ARN: this.inboundTopic.topicArn } : {}),
+        THEMIS_RCS_POOL_ID: config.rcsPoolId,
+        THEMIS_SMS_IDENTITY: config.smsIdentity,
+        THEMIS_SES_FROM: config.sesFromAddress,
+        THEMIS_SUPPORT: config.supportContact,
       },
     });
-    this.inboundTopic.addSubscription(new subs.LambdaSubscription(this.normalizerFunction));
+    for (const topic of new Set([this.inboundTopic, this.rcsInboundTopic])) {
+      topic.addSubscription(new subs.LambdaSubscription(this.normalizerFunction));
+    }
 
     // Role the End User Messaging SMS service assumes to publish inbound
     // two-way messages to the topic above. Attach its ARN as

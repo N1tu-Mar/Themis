@@ -41,7 +41,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   { name: 'get_transaction_details', description: 'Fetch one transaction by id.', params: [str('transactionId'), str('caseId', false)] },
   { name: 'get_transaction_auth_signals', description: 'Fetch authentication signals (CVV/AVS/3DS/device) for one transaction.', params: [str('transactionId'), str('caseId', false)] },
   { name: 'find_related_transactions', description: 'Find transactions related to a given transaction (same merchant/recurring series).', params: [str('transactionId'), num('limit', false), str('caseId', false)] },
-  { name: 'get_customer_dispute_history', description: 'List a customer\'s prior dispute cases.', params: [str('customerId')] },
+  { name: 'get_customer_dispute_history', description: 'List a customer\'s prior dispute cases.', params: [str('customerId'), num('limit', false)] },
   { name: 'resolve_merchant', description: 'Resolve a raw merchant descriptor to a canonical merchant record.', params: [str('descriptor'), str('caseId', false)] },
   { name: 'get_merchant_profile', description: 'Fetch a merchant\'s profile including billing patterns and case statistics.', params: [str('merchantId')] },
   { name: 'get_merchant_risk_signals', description: 'Fetch a merchant\'s active risk signals.', params: [str('merchantId')] },

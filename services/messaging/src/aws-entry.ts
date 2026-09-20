@@ -14,12 +14,22 @@ import {
   InvokeAgentRuntimeCommand,
   type InvokeAgentRuntimeCommandInput,
 } from '@aws-sdk/client-bedrock-agentcore';
+import { SESv2Client, SendEmailCommand, type SendEmailCommandInput } from '@aws-sdk/client-sesv2';
+import {
+  PinpointSMSVoiceV2Client,
+  SendRcsMessageCommand,
+  SendTextMessageCommand,
+  type SendRcsMessageCommandInput,
+  type SendTextMessageCommandInput,
+} from '@aws-sdk/client-pinpoint-sms-voice-v2';
 import { createMessagingRuntime } from './composition.ts';
 
 const dynamoSdk = new DynamoDBClient({});
 // An AgentCore timeout is ambiguous: the runtime may already have performed
 // side effects. Disable SDK retries and let the durable admission claim remain.
 const agentRuntimeSdk = new BedrockAgentCoreClient({ maxAttempts: 1 });
+const smsVoice = new PinpointSMSVoiceV2Client({});
+const sesV2 = new SESv2Client({});
 
 const runtime = createMessagingRuntime(process.env, {
   dynamo: {
@@ -35,13 +45,18 @@ const runtime = createMessagingRuntime(process.env, {
       );
       // Drain the streaming response so a mid-stream runtime failure is observed
       // before the admission claim is marked complete and the socket is released.
-      await output.response?.transformToByteArray();
+      const body = await output.response?.transformToByteArray();
       if (output.statusCode !== undefined && (output.statusCode < 200 || output.statusCode >= 300)) {
         throw new Error(`AgentCore runtime returned HTTP ${output.statusCode}`);
       }
-      return output;
+      try { return body ? JSON.parse(new TextDecoder().decode(body)) : undefined; } catch { return undefined; }
     },
   },
+  messagingClient: {
+    sendTextMessage: input => smsVoice.send(new SendTextMessageCommand(input as unknown as SendTextMessageCommandInput)),
+    sendRcsMessage: input => smsVoice.send(new SendRcsMessageCommand(input as unknown as SendRcsMessageCommandInput)),
+  },
+  sesClient: { sendEmail: input => sesV2.send(new SendEmailCommand(input as unknown as SendEmailCommandInput)) },
 });
 
 /** AWS Lambda handler exported by dist/index.mjs. */

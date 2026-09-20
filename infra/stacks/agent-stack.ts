@@ -11,6 +11,9 @@ import type { ThemisConfig } from '../config/env';
 import { TOOL_DEFINITIONS } from '../config/tool-schemas';
 import type { DataStack } from './data-stack';
 
+/** Fixed so the tools adapter can address messaging without a CloudFormation dependency cycle (messaging depends on this stack). */
+export const MESSAGING_FUNCTION_NAME = 'ThemisMessageNormalizer';
+
 export interface AgentStackProps extends cdk.StackProps {
   readonly config: ThemisConfig;
   readonly data: DataStack;
@@ -43,9 +46,8 @@ export class AgentStack extends cdk.Stack {
     const { config, data } = props;
 
     // ---- Tools adapter Lambda (Gateway target) --------------------------
-    // See infra/lambda/tools-adapter/handler.py for why this is a
-    // placeholder and .handoffs/infra/tools-adapter-contract.md for the
-    // contract downstream workstreams implement against.
+    // Asset staged by scripts/build_assets.py: handler + router over bank_tools,
+    // merchant_intel and the agent workflow services (see handler.py / router.py).
     const toolsAdapterRole = new iam.Role(this, 'ToolsAdapterRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       description: 'Execution role for the AgentCore Gateway tool-adapter Lambda',
@@ -59,6 +61,11 @@ export class AgentStack extends cdk.Stack {
     data.auditTable.grantReadWriteData(toolsAdapterRole);
     data.idempotencyTable.grantReadWriteData(toolsAdapterRole);
     data.artifactsBucket.grantReadWrite(toolsAdapterRole);
+    // send_customer_message / send_case_email are executed by the messaging Lambda.
+    toolsAdapterRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['lambda:InvokeFunction'],
+      resources: [`arn:aws:lambda:${this.region}:${this.account}:function:${MESSAGING_FUNCTION_NAME}`],
+    }));
     if (config.enableSes) {
       // Scoped to identities under the configured sender domain, not "*".
       toolsAdapterRole.addToPolicy(new iam.PolicyStatement({
@@ -76,7 +83,7 @@ export class AgentStack extends cdk.Stack {
       functionName: 'ThemisToolsAdapter',
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda/tools-adapter')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../build/tools-adapter')),
       role: toolsAdapterRole,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
@@ -89,6 +96,7 @@ export class AgentStack extends cdk.Stack {
         AUDIT_TABLE: data.auditTable.tableName,
         IDEMPOTENCY_TABLE: data.idempotencyTable.tableName,
         ARTIFACTS_BUCKET: data.artifactsBucket.bucketName,
+        MESSAGING_FUNCTION_NAME,
         SES_SENDER_DOMAIN: config.sesSenderDomain,
         ENABLE_SES: String(config.enableSes),
         DEMO_AUTONOMOUS_CREDIT_LIMIT: String(config.provisionalCreditAutoApproveLimit),
@@ -214,12 +222,11 @@ export class AgentStack extends cdk.Stack {
       }));
     }
 
-    // Runtime code is packaged from services/agent by the agentcore
-    // workstream; infra only wires the deployment shape. See
-    // .handoffs/infra/agentcore-runtime-contract.md for the exact
-    // entry_point/runtime contract this expects.
+    // Runtime code is staged by scripts/build_assets.py (src/orchestrator + customer directory);
+    // `npm run package:aws` additionally vendors boto3 into it. See
+    // .handoffs/infra/2026-09-17-agentcore-runtime-contract.md for the entry_point contract.
     const runtimeCodeAsset = new s3assets.Asset(this, 'RuntimeCodeAsset', {
-      path: path.join(__dirname, '../../../services/agent'),
+      path: path.join(__dirname, '../../build/agent-runtime'),
     });
 
     this.runtime = new bedrockagentcore.CfnRuntime(this, 'Runtime', {

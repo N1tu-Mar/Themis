@@ -2,6 +2,9 @@ import { DynamoActiveMenuStore, type ActiveMenuDynamoClient } from './active-men
 import { DynamoIdempotencyStore, type DynamoClient } from './idempotency.ts';
 import { createSnsHandler, InboundProcessor, type Channel } from './inbound.ts';
 import { AgentRuntimeConsumer, type AgentRuntimeClient } from './runtime.ts';
+import { ChannelAdapter, type MessagingClient } from './outbound.ts';
+import { SesAdapter, type SesClient } from './email.ts';
+import { OutboundMessageSchema } from '../../../packages/contracts/src/index.ts';
 
 export interface RuntimeEnvironment {
   readonly idempotencyTable: string;
@@ -61,10 +64,17 @@ export function parseRuntimeEnvironment(env: Record<string, string | undefined>)
 
 export interface RuntimeDynamoClient extends DynamoClient, ActiveMenuDynamoClient {}
 
-export function createMessagingRuntime(
-  env: Record<string, string | undefined>,
-  dependencies: { readonly dynamo: RuntimeDynamoClient; readonly agentRuntime: AgentRuntimeClient },
-) {
+export interface RuntimeDependencies {
+  readonly dynamo: RuntimeDynamoClient;
+  readonly agentRuntime: AgentRuntimeClient;
+  /** Outbound delivery. Without `messagingClient` the agent's reply is not sent (inbound-only composition). */
+  readonly messagingClient?: MessagingClient;
+  readonly sesClient?: SesClient;
+}
+
+type ToolEvent = { readonly themisTool?: unknown; readonly [key: string]: unknown };
+
+export function createMessagingRuntime(env: Record<string, string | undefined>, dependencies: RuntimeDependencies) {
   const config = parseRuntimeEnvironment(env);
   const activeMenus = new DynamoActiveMenuStore(config.activeMenuTable, dependencies.dynamo);
   const runtime = new AgentRuntimeConsumer(
@@ -72,14 +82,42 @@ export function createMessagingRuntime(
     dependencies.agentRuntime,
     config.agentRuntimeQualifier,
   );
+  const channel = dependencies.messagingClient
+    ? new ChannelAdapter({ mode: 'aws', rcsIdentity: required(env, 'THEMIS_RCS_POOL_ID'), smsIdentity: required(env, 'THEMIS_SMS_IDENTITY') },
+      dependencies.messagingClient)
+    : undefined;
+  const email = dependencies.sesClient ? new SesAdapter('aws', dependencies.sesClient) : undefined;
   const processor = new InboundProcessor(
     new DynamoIdempotencyStore(config.idempotencyTable, dependencies.dynamo),
-    message => runtime.consume(message),
+    async (message) => {
+      const answer = await runtime.consume(message);
+      // Replies are sent after admission is claimed: a failed send is surfaced, never replayed into AgentCore.
+      if (answer && channel && message.channel !== 'EMAIL') {
+        await channel.send(OutboundMessageSchema.parse({
+          channel: message.channel, customerExternalId: message.customerExternalId,
+          messageId: `reply:${message.messageId}`, caseId: answer.caseId ?? 'no-case-yet', text: answer.reply,
+        }));
+      }
+    },
   );
-  const handler = createSnsHandler({
+  const snsHandler = createSnsHandler({
     topics: config.topics,
     processor,
     choicesFor: async customerExternalId => (await activeMenus.get(customerExternalId))?.choices ?? [],
   });
+  // Tools-adapter Lambda invokes this function directly ({themisTool, ...}) for send_customer_message / send_case_email.
+  const handleTool = async (event: ToolEvent) => {
+    if (event.themisTool === 'send_customer_message' && channel) {
+      return { messageId: await channel.send(OutboundMessageSchema.parse(event.message)) };
+    }
+    if (event.themisTool === 'send_case_email' && email) {
+      return { messageId: await email.send({
+        case: event.case as never, report: event.report as never, recipient: String(event.recipient),
+        nextSteps: event.nextSteps as string[], sender: required(env, 'THEMIS_SES_FROM'), support: required(env, 'THEMIS_SUPPORT') }) };
+    }
+    throw new Error('Unsupported tool event');
+  };
+  const handler = (event: unknown) => (event && typeof event === 'object' && 'themisTool' in event)
+    ? handleTool(event as ToolEvent) : snsHandler(event);
   return Object.freeze({ config, handler, activeMenus });
 }

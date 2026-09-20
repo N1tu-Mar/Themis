@@ -13,6 +13,17 @@ from typing import Any
 from .config import Config
 
 
+# UNVERIFIED wire text of a Gateway policy-engine rejection; anything else stays a GATEWAY_ERROR (which also escalates).
+POLICY_DENIAL = re.compile(r"policy|not authorized|denied|forbid", re.I)
+
+
+def policy_denial(tool: str, text: str) -> dict[str, Any] | None:
+    """A Cedar forbid/no-permit on a propose_* tool means the action needs a human: surface it as a decision so the engine escalates."""
+    if tool.startswith("propose_") and POLICY_DENIAL.search(text):
+        return {"status": "ok", "decision": {"outcome": "REQUIRE_HUMAN_REVIEW", "source": "gateway-policy"}}
+    return None
+
+
 class BedrockModel:
     def __init__(self, cfg: Config):
         import boto3
@@ -30,21 +41,21 @@ class BedrockModel:
 
 class GatewayHTTPClient:
     """AgentCore Gateway is an MCP endpoint (AWS_IAM auth): SigV4-signed JSON-RPC tools/call."""
-    def __init__(self, url: str):
+    def __init__(self, url: str, target: str = "themis-tools"):  # target = CfnGatewayTarget name; Gateway prefixes tools "<target>___"
         import boto3
-        self.url, self.session = url, boto3.Session()
+        self.url, self.target, self.session = url, target, boto3.Session()
 
     def call(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
         from botocore.auth import SigV4Auth
         from botocore.awsrequest import AWSRequest
-        body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": tool, "arguments": arguments}})
+        body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": f"{self.target}___{tool}", "arguments": arguments}})
         req = AWSRequest(method="POST", url=self.url, data=body, headers={"Content-Type": "application/json"})
         SigV4Auth(self.session.get_credentials().get_frozen_credentials(), "bedrock-agentcore", self.session.region_name).add_auth(req)
         with urllib.request.urlopen(urllib.request.Request(self.url, data=body.encode(), headers=dict(req.headers), method="POST"), timeout=20) as resp:
             result = json.load(resp).get("result", {})
         text = result["content"][0]["text"]
         if result.get("isError"):
-            return {"status": "error", "error": {"code": "GATEWAY_ERROR", "message": text[:200]}}
+            return policy_denial(tool, text) or {"status": "error", "error": {"code": "GATEWAY_ERROR", "message": text[:200]}}
         return json.loads(text)
 
 

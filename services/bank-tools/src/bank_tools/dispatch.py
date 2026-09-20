@@ -107,7 +107,8 @@ SPECS: dict[str, Spec] = {
         _s("transactionId", "transaction_id"), _s("caseId", "case_id", False))),
     "find_related_transactions": Spec(tools.find_related_transactions, (
         _s("transactionId", "transaction_id"), _n("limit", "limit", False), _s("caseId", "case_id", False))),
-    "get_customer_dispute_history": Spec(tools.get_customer_dispute_history, (_s("customerId", "customer_id"),)),
+    "get_customer_dispute_history": Spec(tools.get_customer_dispute_history, (
+        _s("customerId", "customer_id"), _n("limit", "limit", False))),
     "resolve_merchant": Spec(tools.resolve_merchant, (_s("descriptor", "descriptor"), _s("caseId", "case_id", False))),
     "get_merchant_profile": Spec(tools.get_merchant_profile, (_s("merchantId", "merchant_id"),)),
     "get_merchant_risk_signals": Spec(tools.get_merchant_risk_signals, (_s("merchantId", "merchant_id"),)),
@@ -182,11 +183,13 @@ def _fingerprint(tool_name: str, arguments: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps([tool_name, body], sort_keys=True).encode()).hexdigest()
 
 
-def dispatch(store: BankToolsStorage, tool_name: str, arguments: Any) -> dict[str, Any]:
-    if tool_name in NOT_OWNED_TOOLS:
+def dispatch(store: BankToolsStorage, tool_name: str, arguments: Any, extra: dict[str, Spec] | None = None) -> dict[str, Any]:
+    """`extra` lets the integration layer add or override Specs for tools owned elsewhere (same validation + idempotency)."""
+    specs = {**SPECS, **(extra or {})}
+    if tool_name in NOT_OWNED_TOOLS and tool_name not in specs:
         owner = NOT_OWNED_TOOLS[tool_name]
         return _error("NOT_OWNED", f"{tool_name} is not implemented by bank-tools; owned by {owner}", owner=owner)
-    spec = SPECS.get(tool_name)
+    spec = specs.get(tool_name)
     if spec is None:
         return _error("UNKNOWN_TOOL", f"unknown tool: {tool_name}")
     kwargs, problem = _validate(spec, arguments)
