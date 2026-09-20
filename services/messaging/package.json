@@ -2,9 +2,19 @@
   "name": "@themis/messaging",
   "private": true,
   "type": "module",
+  "main": "./dist/index.mjs",
   "scripts": {
-    "build": "npm run typecheck",
+    "build": "npm run typecheck && esbuild src/aws-entry.ts --bundle --platform=node --target=node22 --format=esm --sourcemap --outfile=dist/index.mjs",
     "test": "node --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit --target es2022 --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --strict --skipLibCheck src/*.ts"
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-agentcore": "^3.888.0",
+    "@aws-sdk/client-dynamodb": "^3.888.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "0.21.5",
+    "typescript": "5.9.2"
   }
 }

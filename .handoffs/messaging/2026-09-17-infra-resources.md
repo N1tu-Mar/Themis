@@ -1,5 +1,8 @@
 # Messaging resource interface for Infra / integration
 
+Inbound Lambda composition details in this original request are superseded by
+`2026-09-20-runtime-infra-wiring.md`; outbound RCS/SMS/SES resource notes remain current.
+
 No shared contract changes are requested. Messaging tests and typechecking pass against main 52e8419.
 
 Provision/configure outside this worker:
