@@ -232,6 +232,10 @@ class Merchant:
     def to_dict(self) -> dict[str, Any]:
         return {"merchantId": self.merchantId, "canonicalName": self.canonicalName, "aliases": list(self.aliases)}
 
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "Merchant":
+        return cls(merchantId=d["merchantId"], canonicalName=d["canonicalName"], aliases=list(d["aliases"]))
+
 
 @dataclass(slots=True)
 class MerchantRiskSignal:
@@ -246,6 +250,13 @@ class MerchantRiskSignal:
             "type": self.type, "severity": str(self.severity), "observedAt": self.observedAt,
             "expiresAt": self.expiresAt, "evidenceRefs": list(self.evidenceRefs),
         }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "MerchantRiskSignal":
+        return cls(
+            type=d["type"], severity=RiskSeverity(d["severity"]), observedAt=d["observedAt"],
+            expiresAt=d["expiresAt"], evidenceRefs=list(d["evidenceRefs"]),
+        )
 
 
 @dataclass(slots=True)
@@ -266,6 +277,14 @@ class MerchantProfile:
             "riskSignals": [s.to_dict() for s in self.riskSignals],
             "updatedAt": self.updatedAt,
         }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "MerchantProfile":
+        return cls(
+            merchantId=d["merchantId"], canonicalName=d["canonicalName"], aliases=list(d["aliases"]),
+            billingPatterns=list(d["billingPatterns"]), caseStatistics=dict(d["caseStatistics"]),
+            riskSignals=[MerchantRiskSignal.from_dict(s) for s in d["riskSignals"]], updatedAt=d["updatedAt"],
+        )
 
 
 @dataclass(slots=True)
@@ -300,6 +319,19 @@ class Case:
             d["outcome"] = str(self.outcome)
         return d
 
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "Case":
+        return cls(
+            caseId=d["caseId"], customerId=d["customerId"], status=CaseStatus(d["status"]),
+            createdAt=d["createdAt"], updatedAt=d["updatedAt"], claimType=ClaimType(d["claimType"]),
+            merchantId=d.get("merchantId"), transactionIds=list(d["transactionIds"]),
+            evidenceIds=list(d["evidenceIds"]), totalDisputedAmount=d["totalDisputedAmount"],
+            currency=d["currency"], confidence=d.get("confidence"),
+            recommendedActions=[ActionType(a) for a in d["recommendedActions"]],
+            requiresHumanReview=d["requiresHumanReview"],
+            outcome=CaseOutcome(d["outcome"]) if d.get("outcome") else None,
+        )
+
 
 @dataclass(slots=True)
 class Evidence:
@@ -319,6 +351,14 @@ class Evidence:
             "reliability": str(self.reliability), "transactionIds": list(self.transactionIds),
         }
 
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "Evidence":
+        return cls(
+            evidenceId=d["evidenceId"], caseId=d["caseId"], category=EvidenceCategory(d["category"]),
+            type=d["type"], claim=d["claim"], source=d["source"], reliability=Reliability(d["reliability"]),
+            transactionIds=list(d["transactionIds"]),
+        )
+
 
 @dataclass(slots=True)
 class PolicyDecision:
@@ -335,6 +375,13 @@ class PolicyDecision:
             "outcome": str(self.outcome), "rationale": self.rationale, "decidedAt": self.decidedAt,
         }
 
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "PolicyDecision":
+        return cls(
+            decisionId=d["decisionId"], caseId=d["caseId"], action=ActionType(d["action"]),
+            outcome=PolicyOutcome(d["outcome"]), rationale=d["rationale"], decidedAt=d["decidedAt"],
+        )
+
 
 @dataclass(slots=True)
 class HumanReviewRequest:
@@ -349,6 +396,13 @@ class HumanReviewRequest:
             "caseId": self.caseId, "reason": self.reason, "summary": self.summary,
             "recommendedNextStep": self.recommendedNextStep, "evidenceRefs": list(self.evidenceRefs),
         }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "HumanReviewRequest":
+        return cls(
+            caseId=d["caseId"], reason=d["reason"], summary=d["summary"],
+            recommendedNextStep=d["recommendedNextStep"], evidenceRefs=list(d["evidenceRefs"]),
+        )
 
 
 @dataclass(slots=True)
@@ -383,3 +437,13 @@ class AuditRecord:
         if self.humanApprovalRequired is not None:
             d["humanApprovalRequired"] = self.humanApprovalRequired
         return d
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "AuditRecord":
+        return cls(
+            eventId=d["eventId"], caseId=d["caseId"], timestamp=d["timestamp"], action=d["action"],
+            tool=d["tool"], result=AuditResult(d["result"]), actor=d["actor"], policyName=d.get("policyName"),
+            policyOutcome=PolicyOutcome(d["policyOutcome"]) if d.get("policyOutcome") else None,
+            proposedAction=ActionType(d["proposedAction"]) if d.get("proposedAction") else None,
+            inputAmount=d.get("inputAmount"), humanApprovalRequired=d.get("humanApprovalRequired"),
+        )

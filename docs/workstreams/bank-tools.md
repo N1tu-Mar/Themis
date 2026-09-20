@@ -2,59 +2,53 @@
 
 ## STATUS
 
-CORE_TOOL_SURFACE_COMPLETE — integrated on main and reconciled with current contracts/fixtures.
+DYNAMO_DISPATCH_COMPLETE — storage protocol, DynamoDB store, and Gateway dispatcher done on
+`agent/bank-tools/dynamo-dispatch` (local commit, not pushed). Lambda handler wiring is integration work.
 
 ## DONE
 
-- All tool families from prompt.md #55 workstream B: transaction lookup, auth signals,
-  case CRUD, merchant lookup, audit persistence, synthetic protected action tools.
-- Installable `bank_tools` package under `services/bank-tools/src/bank_tools/`.
-- `services/bank-tools/src/bank_tools/`: models.py (dataclasses mirroring packages/contracts,
-  ported CASE_STATUS_TRANSITIONS), store.py (in-memory, indexed), policy.py
-  (deterministic gate for propose_* actions), config.py (thresholds), tools.py
-  (17 tool functions), errors.py.
-- Canonical demo-fixture loader plus generated-schema enum compatibility tests.
-- 35 tests passing: `python3 -m pytest services/bank-tools/tests -q`.
-- Working in a dedicated worktree (`/private/tmp/themis-bank-tools-core-tools`) after
-  a shared-root checkout collision wiped uncommitted work once — see KNOWN ISSUES.
+- Core tool surface (17 tools), in-memory store, deterministic policy, demo-fixture loader (35 tests).
+- `BankToolsStorage` Protocol (store.py) is what tools/dispatcher depend on; in-memory `BankToolsStore`
+  and `DynamoBankToolsStore` (dynamo_store.py, injected low-level client, no boto3 import) implement it.
+- `dispatch(store, tool_name, arguments)` (dispatch.py): camelCase -> snake_case via explicit tables,
+  required/unknown/type/range validation, mandatory `idempotencyKey` on mutating tools, NOT_OWNED for
+  AgentCore/messaging tools, UNKNOWN_TOOL otherwise. A test parses infra/config/tool-schemas.ts and fails on drift.
+- Idempotency: `claim_idempotency` (conditional put, 60s lease) -> run -> `remember_result`; replay returns
+  the stored result and writes nothing; same key + different args -> IDEMPOTENCY_KEY_REUSED; errors release the key.
+- `create_case` now rejects transactions owned by another customer (TRANSACTION_NOT_OWNED) and currency mismatches.
+- Policy stays in Python: `confidence`/`claimType`/`hasConfirmedTransactions` from the Gateway are validated but
+  ignored; propose_dispute_creation requires supplied transactionIds to be on the case.
+- 108 tests; the dispatch tests run against both stores, incl. all current demo fixtures.
 
 ## CURRENT INTERFACES
 
-Import `from bank_tools import tools`; install with `python3 -m pip install -e services/bank-tools`.
-Every tool is `fn(store: BankToolsStore, **kwargs) -> dict`, shaped
-`{"status": "ok", ...}` or `{"status": "error", "error": {"code", "message"}}`.
-Tools: search_transactions, get_transaction_details, get_transaction_auth_signals,
-find_related_transactions, get_customer_dispute_history, resolve_merchant,
-get_merchant_profile, get_merchant_risk_signals, get_case, create_case, update_case,
-save_evidence, propose_provisional_credit, propose_dispute_creation,
-propose_payment_block, propose_card_replacement, get_audit_log.
-All state-changing bank tools require `idempotency_key` and replay cached results.
-Audit records require a `case_id` (matches `AuditEventSchema`); read tools only
-audit when a `case_id` is passed in.
+Install: `python3 -m pip install -e services/bank-tools`.
+- Tools: `fn(store: BankToolsStorage, **snake_case) -> {"status": "ok", ...} | {"status": "error", "error": {code, message}}`.
+- Gateway: `dispatch(store, "create_case", {"customerId": ..., "idempotencyKey": ...})` from `bank_tools.dispatch`.
+- Dynamo: `DynamoBankToolsStore(boto3.client("dynamodb"), Tables.from_env())`; tests use `tests/fake_dynamo.py`.
+- Seed any store: `load_demo_store(repo_root, store=...)`.
+
+## PERSISTENCE ASSUMPTIONS
+
+- Tables/keys/GSIs from infra/stacks/data-stack.ts. No customer/evidence/policy tables exist, so they share
+  Merchants (`C#`,`M#`,`P#`,`A#` prefixes), Cases (`E#`) and Audit (`audit_`,`policy_`,`review_` sort keys).
+- No cross-item transactions: a crash mid-tool leaves partial writes; the IN_PROGRESS claim expires after its
+  lease and a retry re-runs. `replace_case` is last-writer-wins. GSI reads (cases by customer) are eventually consistent.
+- Idempotency rows: pk `<tool>#<key>`, fingerprint, status, result JSON, TTL `expiresAt` (7 days).
 
 ## KNOWN ISSUES
 
-- Runtime validation uses stdlib dataclasses + StrEnum; compatibility tests compare
-  the Python enums with generated `packages/contracts/schemas.json`.
-- DynamoDB persistence and AgentCore Gateway/Lambda handler wiring remain unbuilt.
-- Multiple agents were sharing one working directory earlier and a branch
-  switch by another agent wiped my uncommitted files (recovered from memory +
-  4 surviving untracked test files). Now isolated in a `git worktree`. Other
-  workstream agents should confirm they're each in their own worktree too.
+- Gateway event envelope unconfirmed; no Lambda handler module yet (handler author calls `dispatch`).
+- `get_audit_log` and `include_expired` are not in the Gateway contract, so the dispatcher does not expose them.
+- Fake Dynamo evaluates only the condition/key expressions this store emits; verify against real DynamoDB once.
 
 ## NEXT 3 TASKS
 
-1. Add a DynamoDB-backed store implementing the existing `BankToolsStore` boundary.
-2. Map the versioned camelCase Gateway contract to Python snake_case arguments.
-3. Add a thin AgentCore Gateway/Lambda handler module once agentcore workstream
-   defines the invocation contract.
+1. Integration: build Lambda handler + asset per `.handoffs/bank-tools/2026-09-20-dynamo-dispatch-integration.md`.
+2. Seed Dynamo from fixtures (qa-demo) and run one live smoke test of the conditional writes.
+3. If throughput/consistency matters: version attribute on cases, TransactWriteItems for propose_* writes.
 
 ## LAST TEST COMMAND + RESULT
 
-- `python3 -m pytest services/bank-tools/tests -q` -> 35 passed.
-- `uv build services/bank-tools` -> wheel and source distribution built.
-
-## LAST CODE COMMIT
-
-- 2dbd24e "Add bank-tools core tool surface: transactions, merchants, case CRUD,
-  policy-gated actions" on `agent/bank-tools/core-tools`.
+- `python3 -m pytest services/bank-tools/tests -q` -> 108 passed.
+- `uv build services/bank-tools` -> wheel + sdist built.

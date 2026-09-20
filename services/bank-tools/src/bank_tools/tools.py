@@ -25,7 +25,7 @@ from .models import (
     can_transition_case_status, now_iso, require_currency, require_money,
 )
 from .policy import evaluate_policy
-from .store import BankToolsStore, new_id
+from .store import BankToolsStorage as BankToolsStore, new_id
 
 DEFAULT_SEARCH_LIMIT = 50
 MAX_SEARCH_LIMIT = 200
@@ -208,8 +208,14 @@ def create_case(
     store.get_customer(customer_id)
     claim = ClaimType(claim_type)
     currency = require_currency(currency)
-    txn_ids = list(transaction_ids or [])
-    total = round(sum(store.get_transaction(tid).amount for tid in txn_ids), 2)
+    txn_ids = list(dict.fromkeys(transaction_ids or []))
+    txns = [store.get_transaction(tid) for tid in txn_ids]
+    for txn in txns:
+        if txn.customerId != customer_id:
+            raise ToolError(f"transaction {txn.transactionId} does not belong to customer", "TRANSACTION_NOT_OWNED")
+        if txn.currency != currency:
+            raise ValidationError(f"transaction {txn.transactionId} currency {txn.currency} != case currency {currency}")
+    total = round(sum(t.amount for t in txns), 2)
 
     case = Case(
         caseId=new_id("case"), customerId=customer_id, status=CaseStatus.NEW,
@@ -217,7 +223,7 @@ def create_case(
         transactionIds=txn_ids, evidenceIds=[], totalDisputedAmount=total, currency=currency,
         confidence=None, recommendedActions=[], requiresHumanReview=False,
     )
-    store.create_case_locked(lambda: case)
+    store.create_case(case)
     store.record_audit(case_id=case.caseId, action="CREATE_CASE", tool="create_case")
 
     result = _ok(case=case.to_dict())
