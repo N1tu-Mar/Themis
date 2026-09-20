@@ -1,12 +1,38 @@
-# Messaging boundary
+# Messaging boundary and Lambda deployment
 
-Requires Node 24 and the workspace's existing Zod/TypeScript dependencies. Source imports the shared runtime contracts directly; no contract changes or new dependencies are needed.
+Requires Node 22 or newer. Run `npm --prefix services/messaging run build` and
+`npm --prefix services/messaging test` from the repository root. Build typechecks
+the package and bundles the Lambda plus its runtime dependencies to
+`services/messaging/dist/index.mjs`. Deploy that asset with handler
+`index.handler`; source TypeScript is not the Lambda asset.
 
-Run `npm --prefix services/messaging test` and `npm --prefix services/messaging run typecheck` from the repository root.
+The deployable entry point is `src/aws-entry.ts`. It creates low-level DynamoDB
+and Bedrock AgentCore clients, then calls `createMessagingRuntime`. It never
+calls Bedrock model APIs. AgentCore SDK retries are disabled because a transport
+failure may occur after downstream side effects. Tests use only injected clients
+and never construct the entry point or make AWS calls.
+
+Required Lambda environment:
+
+| Variable | Requirement |
+| --- | --- |
+| `THEMIS_MODE` | Must be `aws`. |
+| `IDEMPOTENCY_TABLE` | Dynamo table with string partition key `idempotencyKey`. |
+| `AGENT_RUNTIME_ARN` | Full Bedrock AgentCore Runtime ARN. |
+| `ENABLE_RCS` | Literal `true` or `false`. |
+| `ENABLE_SMS_FALLBACK` | Literal `true` or `false`; at least one channel must be enabled. |
+| `THEMIS_RCS_TOPIC_ARN` | Required when RCS is enabled. |
+| `THEMIS_SMS_TOPIC_ARN` | Required when SMS is enabled and must differ from the RCS topic. |
+
+Optional `ACTIVE_MENU_TABLE` selects a separate table with the same
+`idempotencyKey` partition key; it defaults to `IDEMPOTENCY_TABLE`.
+`AGENT_RUNTIME_QUALIFIER` targets a non-default AgentCore endpoint.
 
 `createMessaging({env, consume, ...})` exposes `inbound`, `channel`, `email`, `sender`, and `support`. `consume` receives only validated shared `InboundMessage` data. Local mode (the default or `THEMIS_MODE=local`) captures outbound payloads in `channel.captured` and `email.captured`, even if AWS clients are supplied. Inject fake messages with `inbound.process(normalizeInbound(payload, channel, timestamp))`.
 
-`createSnsHandler({topics, processor, choicesFor})` returns a Lambda-compatible SNS handler. Map SNS topic ARNs to RCS/SMS explicitly: AWS's identical payload shape cannot reliably identify the channel. Pass the runtime's `inbound` as processor. `choicesFor(customerExternalId)` must return the customer's active menu in outbound order, scoped to the current conversation/case. Numeric replies have no global meaning. Returned canonical intents use the shared `postback` field. Unknown postbacks fail instead of triggering an action. Menus are resolved after the idempotency claim so duplicate retries survive menu changes.
+`createSnsHandler({topics, processor, choicesFor})` returns a Lambda-compatible SNS handler. Map trusted SNS topic ARNs to RCS/SMS explicitly: the provider payload cannot reliably distinguish plain RCS from SMS. `createMessagingRuntime` performs this mapping from the validated environment, uses `DynamoIdempotencyStore`, resolves the customer's durable active menu, and invokes an injected `AgentRuntimeClient`. Only the strict shared `InboundMessage` JSON is placed in the AgentCore payload.
+
+`MemoryActiveMenuStore` supports local tests. `DynamoActiveMenuStore` persists one active menu per customer with its `caseId` and ordered choices. `clear(customerExternalId, caseId)` is conditional, so an old case cannot remove a newer case's menu. Numeric and textual SMS replies are interpreted only against this recovered menu. Every Dynamo `Item` or `Key` uses the `idempotencyKey` partition key; customer lookup keys are SHA-256 hashes.
 
 AWS mode requires `THEMIS_RCS_POOL_ID`, `THEMIS_SMS_IDENTITY`, `THEMIS_SES_FROM`, `THEMIS_SUPPORT`, injected clients, and a durable `IdempotencyStore`. Use an RCS+SMS pool for text fallback. The SMS identity must be a phone number/sender ID (value, ID or ARN), not a pool, because rich RCS per-message fallback disallows pools. Region/credentials are configured on the injected SDK clients. Resource creation is owned by Infra.
 
@@ -25,9 +51,12 @@ const dynamoClient = {
 const store = new DynamoIdempotencyStore(tableName, dynamoClient);
 ```
 
-SDK installation/bundling belongs to the deployment composition root. The worker does not import an SDK or create clients in local mode.
+The deployable composition depends on `@aws-sdk/client-dynamodb` and
+`@aws-sdk/client-bedrock-agentcore`; the build bundles them. Integration must run
+the root `npm install` and commit the root lockfile before merge. The messaging
+worker intentionally does not edit that integration-owned file.
 
-Dynamo idempotency uses the shared table's string partition key `idempotencyKey` and PutItem/UpdateItem permission. Keys are hashed customer/message IDs; no message bodies are persisted. Atomic conditional claims prevent repeats across Lambda invocations. Claims do not expire or automatically release after failure: partial downstream effects must not execute twice. Failed/incomplete PROCESSING claims need operator reconciliation; this is at-most-once admission, not an exactly-once transaction across banking and messaging systems. Memory storage is for a single-process local MVP only. Downstream systems should also retain the inbound ID as their operation key. A transport timeout is ambiguous, so adapters surface it without automatically resending over SMS.
+Dynamo idempotency uses atomic conditional claims. Claims do not expire or automatically release after failure: partial downstream effects must not execute twice. A runtime failure is surfaced from the Lambda while its `PROCESSING` claim remains; an SNS retry is admitted as a duplicate and cannot invoke AgentCore again. Failed claims need operator reconciliation. This is at-most-once admission, not an exactly-once transaction across systems.
 
 `caseEmail({case, report, recipient, sender, support, nextSteps})` produces an SES v2 request using structured facts. Case/report identities, transaction membership, currency, totals, and customer ownership are checked. Only `actionsTaken` are presented as completed actions. `nextSteps` must be supplied by deterministic case workflow; the renderer invents none. SES sender identities must be verified; sandbox accounts additionally restrict recipients. Acceptance IDs are not delivery receipts. Infra must configure delivery monitoring/DLQs and SNS subscription permissions. Use the Lambda subscription boundary, not an unauthenticated SNS HTTP endpoint.
 

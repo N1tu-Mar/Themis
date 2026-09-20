@@ -55,12 +55,25 @@ export function createSnsHandler(options: {
   choicesFor: (customer: string) => Promise<readonly Choice[]>;
 }) {
   // Lambda SNS subscription boundary; do not expose this as an unauthenticated HTTP endpoint.
-  return async (event: { Records: SnsRecord[] }) => {
+  return async (event: unknown) => {
+    if (!event || typeof event !== 'object' || !Array.isArray((event as { Records?: unknown }).Records)
+      || !(event as { Records: unknown[] }).Records.length) {
+      throw new Error('Malformed SNS event');
+    }
     const results: string[] = [];
-    for (const record of event.Records) {
-      const channel = options.topics[record.Sns.TopicArn];
-      if (record.EventSource !== 'aws:sns' || !channel) throw new Error('Untrusted SNS source');
-      const message = normalizeInbound(JSON.parse(record.Sns.Message), channel, record.Sns.Timestamp);
+    for (const candidate of (event as { Records: unknown[] }).Records) {
+      if (!candidate || typeof candidate !== 'object') throw new Error('Malformed SNS record');
+      const record = candidate as Partial<SnsRecord>;
+      if (record.EventSource !== 'aws:sns' || !record.Sns || typeof record.Sns !== 'object') throw new Error('Untrusted SNS source');
+      const { TopicArn, Timestamp, Message } = record.Sns;
+      if (typeof TopicArn !== 'string' || typeof Timestamp !== 'string' || typeof Message !== 'string') {
+        throw new Error('Malformed SNS record');
+      }
+      const channel = options.topics[TopicArn];
+      if (!channel) throw new Error('Untrusted SNS source');
+      let payload: unknown;
+      try { payload = JSON.parse(Message); } catch { throw new Error('Malformed SNS message'); }
+      const message = normalizeInbound(payload, channel, Timestamp);
       results.push(await options.processor.process(message, async m => normalizeChoice(m, await options.choicesFor(m.customerExternalId))));
     }
     return results;
