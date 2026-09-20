@@ -20,7 +20,7 @@ from .models import (
     RiskSeverity,
     Transaction,
 )
-from .store import BankToolsStore
+from .store import BankToolsStorage, BankToolsStore
 
 
 def _read(path: Path) -> list[dict[str, Any]]:
@@ -31,11 +31,11 @@ def _read(path: Path) -> list[dict[str, Any]]:
     return value
 
 
-def load_demo_store(repo_root: Path | None = None) -> BankToolsStore:
-    """Build an in-memory store from fixtures validated by ``@themis/contracts``."""
+def load_demo_store(repo_root: Path | None = None, store: BankToolsStorage | None = None) -> BankToolsStorage:
+    """Seed ``store`` (default: a new in-memory one) from fixtures validated by ``@themis/contracts``."""
     root = repo_root or Path(__file__).resolve().parents[4]
     fixtures = root / "fixtures"
-    store = BankToolsStore()
+    store = store if store is not None else BankToolsStore()
 
     for customer in _read(fixtures / "customers" / "demo.json"):
         store.add_customer(customer)

@@ -5,9 +5,8 @@ from bank_tools.models import Case, CaseStatus, ClaimType, Merchant, MerchantPro
 from bank_tools.store import BankToolsStore
 
 
-def seeded_store() -> BankToolsStore:
+def seed(store):
     """A tiny, fully synthetic dataset: one customer, one merchant (+ alias), a few transactions."""
-    store = BankToolsStore()
     store.add_customer({
         "customerId": "customer_001", "name": "Morgan Example",
         "phone": "+15555550123", "email": "morgan@example.test",
@@ -42,6 +41,10 @@ def seeded_store() -> BankToolsStore:
         confidence=None, recommendedActions=[], requiresHumanReview=False,
     ))
     return store
+
+
+def seeded_store() -> BankToolsStore:
+    return seed(BankToolsStore())
 
 
 @pytest.fixture

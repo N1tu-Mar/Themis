@@ -16,9 +16,11 @@ from __future__ import annotations
 import bisect
 import re
 import threading
+import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Protocol
 
 from .errors import ConflictError, NotFoundError
 from .models import (
@@ -44,9 +46,76 @@ def new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
+# Idempotency claim states. CLAIMED: caller owns the key and must run the tool. REPLAY: a prior
+# completed result is returned. IN_PROGRESS: another live caller owns it. MISMATCH: key reused
+# with different arguments.
+CLAIMED, REPLAY, IN_PROGRESS, MISMATCH = "CLAIMED", "REPLAY", "IN_PROGRESS", "MISMATCH"
+CLAIM_LEASE_SECONDS = 60
+
+
+@dataclass(frozen=True, slots=True)
+class IdempotencyClaim:
+    state: str
+    result: dict[str, Any] | None = None
+
+
+class BankToolsStorage(Protocol):
+    """Everything the tool functions and dispatcher need from a system of record.
+
+    Implemented by the in-memory `BankToolsStore` (tests/local) and `DynamoBankToolsStore`.
+    Lookups raise NotFoundError; `create_case` raises ConflictError on a duplicate caseId.
+    """
+
+    def claim_idempotency(
+        self, tool: str, key: str, fingerprint: str, lease_seconds: int = CLAIM_LEASE_SECONDS,
+    ) -> IdempotencyClaim: ...
+    def release_idempotency(self, tool: str, key: str) -> None: ...
+    def idempotent_result(self, tool: str, key: str | None) -> dict[str, Any] | None: ...
+    def remember_result(self, tool: str, key: str | None, result: dict[str, Any]) -> None: ...
+    def get_transaction(self, transaction_id: str) -> Transaction: ...
+    def transactions_for_customer(
+        self, customer_id: str, *, since: str | None = None, until: str | None = None,
+    ) -> list[Transaction]: ...
+    def get_customer(self, customer_id: str) -> dict[str, Any]: ...
+    def resolve_merchant_id(self, descriptor: str) -> str | None: ...
+    def get_merchant(self, merchant_id: str) -> Merchant: ...
+    def get_merchant_profile(self, merchant_id: str) -> MerchantProfile: ...
+    def get_case(self, case_id: str) -> Case: ...
+    def cases_for_customer(self, customer_id: str) -> list[Case]: ...
+    def create_case(self, case: Case) -> Case: ...
+    def replace_case(self, case: Case) -> None: ...
+    def get_evidence(self, evidence_id: str) -> Evidence: ...
+    def add_evidence(self, evidence: Evidence) -> None: ...
+    def add_policy_decision(self, decision: PolicyDecision) -> None: ...
+    def add_human_review_request(self, request: HumanReviewRequest) -> None: ...
+    def record_audit(
+        self, *, case_id: str, action: str, tool: str, result: AuditResult | str = AuditResult.SUCCESS,
+        policy_name: str | None = None, policy_outcome: PolicyOutcome | None = None,
+        proposed_action: ActionType | None = None, input_amount: float | None = None,
+        human_approval_required: bool | None = None,
+    ) -> AuditRecord: ...
+    def audit_for_case(self, case_id: str) -> list[AuditRecord]: ...
+
+
+def build_audit_record(
+    *, case_id: str, action: str, tool: str, result: AuditResult | str = AuditResult.SUCCESS,
+    policy_name: str | None = None, policy_outcome: PolicyOutcome | None = None,
+    proposed_action: ActionType | None = None, input_amount: float | None = None,
+    human_approval_required: bool | None = None,
+) -> AuditRecord:
+    """caseId is required by packages/contracts AuditEventSchema; only call this with a real case."""
+    return AuditRecord(
+        eventId=new_id("audit"), caseId=case_id, timestamp=now_iso(), action=action, tool=tool,
+        result=AuditResult(result), policyName=policy_name, policyOutcome=policy_outcome,
+        proposedAction=proposed_action, inputAmount=input_amount,
+        humanApprovalRequired=human_approval_required,
+    )
+
+
 class BankToolsStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        self._claims: dict[tuple[str, str], tuple[float, str]] = {}  # (tool, key) -> (lease expiry, fingerprint)
         self._transactions: dict[str, Transaction] = {}
         self._by_customer: dict[str, list[Transaction]] = {}
         self._customers: dict[str, dict[str, Any]] = {}
@@ -98,6 +167,25 @@ class BankToolsStore:
     def remember_result(self, tool: str, key: str | None, result: dict[str, Any]) -> None:
         if key:
             self._idempotency[(tool, key)] = result
+
+    def claim_idempotency(
+        self, tool: str, key: str, fingerprint: str, lease_seconds: int = CLAIM_LEASE_SECONDS,
+    ) -> IdempotencyClaim:
+        with self._lock:
+            slot = (tool, key)
+            expiry, prior_fp = self._claims.get(slot, (0.0, fingerprint))
+            if prior_fp != fingerprint:
+                return IdempotencyClaim(MISMATCH)
+            if slot in self._idempotency:
+                return IdempotencyClaim(REPLAY, self._idempotency[slot])
+            if expiry > time.time():
+                return IdempotencyClaim(IN_PROGRESS)
+            self._claims[slot] = (time.time() + lease_seconds, fingerprint)
+            return IdempotencyClaim(CLAIMED)
+
+    def release_idempotency(self, tool: str, key: str) -> None:
+        with self._lock:
+            self._claims.pop((tool, key), None)
 
     # -- transactions -----------------------------------------------------
     def get_transaction(self, transaction_id: str) -> Transaction:
@@ -157,10 +245,8 @@ class BankToolsStore:
             raise NotFoundError(f"case not found: {case.caseId}")
         self._cases[case.caseId] = case
 
-    def create_case_locked(self, factory) -> Case:
-        """Run `factory()` under the store lock and register the resulting case."""
+    def create_case(self, case: Case) -> Case:
         with self._lock:
-            case = factory()
             if case.caseId in self._cases:
                 raise ConflictError(f"case already exists: {case.caseId}")
             self.add_case(case)
@@ -197,12 +283,10 @@ class BankToolsStore:
         proposed_action: ActionType | None = None, input_amount: float | None = None,
         human_approval_required: bool | None = None,
     ) -> AuditRecord:
-        """caseId is required by packages/contracts AuditEventSchema; only call this with a real case."""
-        record = AuditRecord(
-            eventId=new_id("audit"), caseId=case_id, timestamp=now_iso(), action=action, tool=tool,
-            result=AuditResult(result), policyName=policy_name, policyOutcome=policy_outcome,
-            proposedAction=proposed_action, inputAmount=input_amount,
-            humanApprovalRequired=human_approval_required,
+        record = build_audit_record(
+            case_id=case_id, action=action, tool=tool, result=result, policy_name=policy_name,
+            policy_outcome=policy_outcome, proposed_action=proposed_action, input_amount=input_amount,
+            human_approval_required=human_approval_required,
         )
         self._audit_by_case.setdefault(case_id, []).append(record)
         return record
