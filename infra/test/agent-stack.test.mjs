@@ -51,6 +51,39 @@ test('freezes one versioned invocation contract with idempotency on every mutati
   }
 });
 
+test('Gateway exposes outcome and structured escalation fields as optional arguments', () => {
+  const update = TOOL_DEFINITIONS.find((tool) => tool.name === 'update_case');
+  const escalate = TOOL_DEFINITIONS.find((tool) => tool.name === 'escalate_case');
+  assert.deepEqual(update.params.find((param) => param.name === 'outcome'), {
+    name: 'outcome', type: 'string', required: false,
+  });
+  assert.deepEqual(escalate.params.filter((param) => ['summary', 'evidenceRefs'].includes(param.name)), [
+    { name: 'summary', type: 'string', required: false },
+    { name: 'evidenceRefs', type: 'array', required: false, items: { type: 'string' } },
+  ]);
+});
+
+test('tools adapter has durable merchant profile env and only its required downstream invoke grant', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::Lambda::Function', {
+    FunctionName: 'ThemisToolsAdapter',
+    Environment: { Variables: Match.objectLike({
+      THEMIS_MODE: 'aws',
+      MERCHANTS_TABLE: Match.anyValue(),
+      MERCHANT_PROFILE_TABLE: Match.anyValue(),
+      ARTIFACTS_BUCKET: Match.anyValue(),
+    }) },
+  });
+  const functions = t.findResources('AWS::Lambda::Function');
+  const adapter = Object.values(functions).find((fn) => fn.Properties.FunctionName === 'ThemisToolsAdapter');
+  assert.deepEqual(
+    adapter.Properties.Environment.Variables.MERCHANT_PROFILE_TABLE,
+    adapter.Properties.Environment.Variables.MERCHANTS_TABLE,
+  );
+  const policies = t.findResources('AWS::IAM::Policy');
+  assert.equal(JSON.stringify(policies).includes('ses:Send'), false, 'adapter must delegate SES to messaging');
+});
+
 test('provisions a policy engine with a financial-actions and a default-deny policy', () => {
   const t = synth();
   t.resourceCountIs('AWS::BedrockAgentCore::PolicyEngine', 1);
@@ -81,6 +114,11 @@ test('provisions exactly one Runtime hosting the Themis orchestrator', () => {
   const t = synth();
   t.resourceCountIs('AWS::BedrockAgentCore::Runtime', 1);
   t.hasResourceProperties('AWS::BedrockAgentCore::Runtime', { AgentRuntimeName: 'ThemisOrchestrator' });
+  t.hasResourceProperties('AWS::BedrockAgentCore::Runtime', {
+    EnvironmentVariables: Match.objectLike({
+      THEMIS_MODE: 'aws', GATEWAY_IDENTIFIER: Match.anyValue(), GATEWAY_URL: Match.anyValue(), MEMORY_ID: Match.anyValue(),
+    }),
+  });
 });
 
 test('does not provision a custom Browser or WorkloadIdentity resource (nothing uses them)', () => {

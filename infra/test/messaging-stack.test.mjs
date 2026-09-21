@@ -16,10 +16,11 @@ function synth(overrides = {}) {
   return Template.fromStack(stack);
 }
 
-test('provisions exactly one inbound SNS topic (no extra queue invented)', () => {
+test('provisions distinct inbound and delivery-event SNS topics (no extra queue invented)', () => {
   const t = synth();
-  t.resourceCountIs('AWS::SNS::Topic', 1);
+  t.resourceCountIs('AWS::SNS::Topic', 2);
   t.hasResourceProperties('AWS::SNS::Topic', { TopicName: 'ThemisInboundMessaging' });
+  t.hasResourceProperties('AWS::SNS::Topic', { TopicName: 'ThemisMessagingDeliveryEvents' });
   t.resourceCountIs('AWS::SQS::Queue', 0);
 });
 
@@ -27,6 +28,29 @@ test('subscribes the normalizer Lambda to the inbound topic', () => {
   const t = synth();
   t.resourceCountIs('AWS::SNS::Subscription', 1);
   t.hasResourceProperties('AWS::SNS::Subscription', { Protocol: 'lambda' });
+});
+
+test('routes ConfigurationSet events only to the delivery topic and never subscribes the normalizer', () => {
+  const t = synth({ enableSmsFallback: true });
+  const topics = t.findResources('AWS::SNS::Topic');
+  const deliveryId = Object.entries(topics).find(([, topic]) =>
+    topic.Properties.TopicName === 'ThemisMessagingDeliveryEvents')[0];
+  const inboundId = Object.entries(topics).find(([, topic]) =>
+    topic.Properties.TopicName === 'ThemisInboundMessaging')[0];
+  const configs = t.findResources('AWS::SMSVOICE::ConfigurationSet');
+  const [config] = Object.values(configs);
+  const destination = config.Properties.EventDestinations[0].SnsDestination.TopicArn;
+  assert.deepEqual(destination, { Ref: deliveryId });
+  assert.notDeepEqual(destination, { Ref: inboundId });
+  const subscriptions = t.findResources('AWS::SNS::Subscription');
+  assert.equal(Object.values(subscriptions).some((sub) =>
+    JSON.stringify(sub.Properties.TopicArn).includes(deliveryId)), false);
+  t.hasResourceProperties('AWS::SNS::TopicPolicy', {
+    PolicyDocument: Match.objectLike({ Statement: Match.arrayWith([Match.objectLike({
+      Action: 'sns:Publish', Principal: { Service: 'sms-voice.amazonaws.com' }, Resource: { Ref: deliveryId },
+    })]) }),
+  });
+  assert.ok(t.findOutputs('DeliveryEventTopicArn').DeliveryEventTopicArn);
 });
 
 test('normalizer role can invoke the agent runtime and the idempotency table, nothing broader', () => {
@@ -40,12 +64,31 @@ test('normalizer role can invoke the agent runtime and the idempotency table, no
   });
 });
 
-test('provisions the SMS two-way channel role + configuration set only when ENABLE_SMS_FALLBACK is set', () => {
+test('provisions ConfigurationSet only for SMS and an inbound role for either channel', () => {
   const on = synth({ enableSmsFallback: true });
   on.resourceCountIs('AWS::SMSVOICE::ConfigurationSet', 1);
 
   const off = synth({ enableSmsFallback: false });
   off.resourceCountIs('AWS::SMSVOICE::ConfigurationSet', 0);
+  off.resourceCountIs('AWS::SNS::TopicPolicy', 0);
+
+  const rcsOnly = synth({ enableRcs: true, enableSmsFallback: false });
+  assert.ok(rcsOnly.findOutputs('SmsTwoWayRoleArn').SmsTwoWayRoleArn);
+});
+
+test('inbound service role can publish to inbound topics but never the delivery-event topic', () => {
+  const t = synth({ enableRcs: true, enableSmsFallback: true });
+  const topics = t.findResources('AWS::SNS::Topic');
+  const deliveryId = Object.entries(topics).find(([, topic]) =>
+    topic.Properties.TopicName === 'ThemisMessagingDeliveryEvents')[0];
+  const inboundIds = Object.entries(topics).filter(([, topic]) =>
+    topic.Properties.TopicName !== 'ThemisMessagingDeliveryEvents').map(([id]) => id);
+  const policies = t.findResources('AWS::IAM::Policy');
+  const inboundPolicy = Object.values(policies).find((policy) =>
+    JSON.stringify(policy.Properties.PolicyDocument).includes('sns:Publish'));
+  const policyJson = JSON.stringify(inboundPolicy.Properties.PolicyDocument);
+  for (const id of inboundIds) assert.ok(policyJson.includes(id), `missing inbound topic ${id}`);
+  assert.equal(policyJson.includes(deliveryId), false);
 });
 
 test('does not provision a real phone number or pool (manual step, not reproducible in CDK)', () => {

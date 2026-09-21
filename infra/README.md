@@ -1,82 +1,149 @@
 # Themis infrastructure (AWS CDK v2)
 
-Five stacks, wired in `bin/themis.ts`:
+Five stacks are wired in `bin/themis.ts`:
 
 | Stack | Owns |
 |---|---|
-| `ThemisData` | DynamoDB tables, idempotency table, S3 artifacts bucket |
-| `ThemisAgent` | Tools-adapter Lambda (staged from `infra/lambda/tools-adapter` + services by `scripts/build_assets.py`), AgentCore Gateway/GatewayTarget/Memory/PolicyEngine/Policies/Runtime |
-| `ThemisMessaging` | Inbound SNS topic(s) (separate RCS topic when both channels are on), messaging Lambda (Node 22 bundle of `services/messaging`), SMS two-way IAM role + ConfigurationSet |
+| `ThemisData` | DynamoDB system-of-record tables, idempotency table, private S3 artifacts bucket |
+| `ThemisAgent` | Tools-adapter Lambda, AgentCore Gateway/target, Memory, Policy Engine/policies, Runtime |
+| `ThemisMessaging` | Separate SMS/RCS inbound SNS topics, delivery-event SNS topic, messaging Lambda, SMS two-way role and ConfigurationSet |
 | `ThemisObservability` | CloudWatch alarms, log-derived metrics, dashboard |
-| `ThemisWeb` | Amplify Hosting app + branch for `apps/dashboard` |
+| `ThemisWeb` | Amplify Hosting app and branch |
 
-## Setup
+## Local build and tests
 
-```
-npm install --workspace=infra   # from repo root
-npm run build --workspace=infra
-```
+From the repository root:
 
-`cdk synth` needs no AWS credentials (uses dummy account/region if unset).
-`cdk deploy` needs valid AWS credentials and a bootstrapped environment
-(`npx cdk bootstrap aws://ACCOUNT/REGION`, one-time per account/region).
-
-```
-cd infra
-npx cdk synth
-npx cdk deploy --all      # requires AWS credentials
-```
-
-## Configuration (env vars, all read in `config/env.ts`)
-
-```
-THEMIS_MODE=local|aws            # default: local
-AWS_REGION / CDK_DEFAULT_REGION  # default: us-east-1
-CDK_DEFAULT_ACCOUNT
-
-ENABLE_RCS                       # default: false
-ENABLE_SMS_FALLBACK              # default: true
-ENABLE_SES                       # default: true
-ENABLE_BROWSER_RESEARCH          # default: false
-ENABLE_PROACTIVE_DETECTION       # default: false
-ENABLE_REASONING_ESCALATION      # default: true
-
-BEDROCK_MODEL_ID_FAST            # required when THEMIS_MODE=aws, no default
-BEDROCK_MODEL_ID_REASONING       # required when THEMIS_MODE=aws, no default
-SES_SENDER_DOMAIN                # default: themis-demo.example (placeholder - see manual steps)
-THEMIS_RCS_POOL_ID               # required when THEMIS_MODE=aws (manually provisioned RCS+SMS pool)
-THEMIS_SMS_IDENTITY              # required when THEMIS_MODE=aws (phone number / sender ID, not a pool)
-THEMIS_SES_FROM                  # required when THEMIS_MODE=aws (verified sender address)
-THEMIS_SUPPORT                   # required when THEMIS_MODE=aws (support contact shown in case emails)
-DEMO_AUTONOMOUS_CREDIT_LIMIT     # default: 50
-DEMO_CREDIT_CONFIDENCE_THRESHOLD # default: 0.8
-```
-
-## Manual steps CDK does not automate
-
-RCS registration, SMS number provisioning, SES identity verification, and
-connecting the Amplify app to a GitHub repo all require interactive
-console/OAuth steps that can't be reproduced by `cdk deploy` alone - see
-`.handoffs/infra/2026-09-17-messaging-lambda-contract.md` and
-`.handoffs/infra/2026-09-17-web-and-ses-manual-steps.md` for exactly what to
-do and why each one was left manual.
-
-## Retention / teardown
-
-Every data resource (`ThemisData` stack) is `RemovalPolicy.DESTROY` with
-`autoDeleteObjects` on the S3 bucket - `cdk destroy --all` fully tears the
-demo down with no orphaned billing resources. This is a hackathon setting,
-not a production one; do not reuse this stack for anything holding real data
-without changing it.
-
-## Testing
-
-```
+```sh
+npm install --workspace=infra
 npm test --workspace=infra
 ```
 
-Runs `cdk synth` (via the CLI, dummy account/region) plus `aws-cdk-lib/assertions`
-checks per stack: expected resources exist, no `Action:"*"`+`Resource:"*"`
-IAM statements, env/config values propagate, SNS/DynamoDB/S3/CloudWatch
-wiring matches what's documented above. No AWS credentials or live
-paid calls (SES/SNS/Bedrock) happen in any test.
+The infra tests build both Lambda assets, run CDK assertion tests, and execute a
+credential-free `cdk synth`. They never register identities, deploy stacks, or
+call live messaging, SES, Bedrock, AgentCore, DynamoDB, or S3 APIs.
+
+## AWS deployment configuration
+
+`infra/config/env.ts` reads these variables. `npm run preflight --workspace=infra`
+fails before deployment if AWS mode, model IDs, enabled-channel identities, the
+SES sender identity, or support contact are incomplete.
+
+```sh
+export THEMIS_MODE=aws
+export AWS_REGION=us-east-1
+export CDK_DEFAULT_ACCOUNT=123456789012
+export CDK_DEFAULT_REGION="$AWS_REGION"
+
+export ENABLE_RCS=true
+export ENABLE_SMS_FALLBACK=true
+export ENABLE_SES=true
+export ENABLE_BROWSER_RESEARCH=false
+export ENABLE_PROACTIVE_DETECTION=false
+export ENABLE_REASONING_ESCALATION=true
+
+export BEDROCK_MODEL_ID_FAST='<foundation-model-id>'
+export BEDROCK_MODEL_ID_REASONING='<foundation-model-id>'
+export THEMIS_RCS_POOL_ID='<manually-registered-rcs-sms-pool-id>'
+export THEMIS_SMS_IDENTITY='<phone-number-or-sender-id; not a pool>'
+export SES_SENDER_DOMAIN='<verified-ses-domain>'
+export THEMIS_SES_FROM='themis@<verified-ses-domain>'
+export THEMIS_SUPPORT='<support-email-or-phone>'
+
+export DEMO_AUTONOMOUS_CREDIT_LIMIT=50
+export DEMO_CREDIT_CONFIDENCE_THRESHOLD=0.8
+```
+
+At least one inbound channel must be enabled. The deployed outbound composition
+constructs both channel adapters at cold start, so both `THEMIS_RCS_POOL_ID` and
+`THEMIS_SMS_IDENTITY` are required. The verified SES sender/domain and support
+contact are also mandatory deployment inputs. CDK does not verify that these
+manually provisioned identities are live.
+
+## Exact deployment order
+
+Do this only after manually registering the RCS pool/SMS identity and verifying
+the SES sender. Bootstrap is a one-time account/region operation.
+
+```sh
+npm exec --workspace=infra -- cdk bootstrap "aws://${CDK_DEFAULT_ACCOUNT}/${CDK_DEFAULT_REGION}"
+
+# 1. Compile, build assets, and synthesize all stacks with the intended config.
+npm run synth --workspace=infra
+
+# 2. Rebuild complete AWS assets. This vendors boto3/botocore into the Runtime
+#    and asserts both Python assets contain all three packages and schema data.
+npm run package:aws --workspace=infra
+
+# 3. Validate deployment-only values, then deploy the already-packaged assets.
+npm run preflight --workspace=infra
+npm exec --workspace=infra -- cdk deploy --all
+```
+
+`package:aws` produces:
+
+- `infra/build/tools-adapter`: `handler.py`, `router.py`, Dynamo profile adapter,
+  `bank_tools`, `merchant_intel`, `orchestrator`, merchant profiles, schemas.
+- `infra/build/agent-runtime`: the same three packages under `src/`, packaged
+  schemas and fixtures, Runtime entry point, and vendored `boto3`/`botocore`.
+- `services/messaging/dist/index.mjs`: the bundled Node 22 messaging Lambda.
+
+Do not run `npm run build --workspace=infra` between `package:aws` and deploy;
+the ordinary build intentionally creates the credential-free, non-vendored
+Runtime asset used by tests.
+
+## Seed after deploy
+
+Load stack outputs and seed only the committed synthetic demo fixtures:
+
+```sh
+export TRANSACTIONS_TABLE="$(aws cloudformation describe-stacks --stack-name ThemisData --query 'Stacks[0].Outputs[?OutputKey==`TransactionsTableName`].OutputValue | [0]' --output text)"
+export CASES_TABLE="$(aws cloudformation describe-stacks --stack-name ThemisData --query 'Stacks[0].Outputs[?OutputKey==`CasesTableName`].OutputValue | [0]' --output text)"
+export MERCHANTS_TABLE="$(aws cloudformation describe-stacks --stack-name ThemisData --query 'Stacks[0].Outputs[?OutputKey==`MerchantsTableName`].OutputValue | [0]' --output text)"
+export AUDIT_TABLE="$(aws cloudformation describe-stacks --stack-name ThemisData --query 'Stacks[0].Outputs[?OutputKey==`AuditTableName`].OutputValue | [0]' --output text)"
+export IDEMPOTENCY_TABLE="$(aws cloudformation describe-stacks --stack-name ThemisData --query 'Stacks[0].Outputs[?OutputKey==`IdempotencyTableName`].OutputValue | [0]' --output text)"
+
+PYTHONPATH=infra/build/agent-runtime/src:infra/build/agent-runtime python3 -c 'from pathlib import Path; import boto3; from bank_tools.dynamo_store import DynamoBankToolsStore, Tables; from bank_tools.fixtures import load_demo_store; load_demo_store(Path.cwd(), store=DynamoBankToolsStore(boto3.client("dynamodb"), Tables.from_env()))'
+```
+
+## Smoke-test after seed
+
+First attach the deployed `SmsTwoWayRoleArn` and `InboundTopicArn` to the SMS
+identity, attach `RcsInboundTopicArn` to the RCS agent, and confirm both are
+active. Then send a synthetic SNS message through the same normalizer boundary:
+
+```sh
+export INBOUND_TOPIC_ARN="$(aws cloudformation describe-stacks --stack-name ThemisMessaging --query 'Stacks[0].Outputs[?OutputKey==`InboundTopicArn`].OutputValue | [0]' --output text)"
+aws sns publish --topic-arn "$INBOUND_TOPIC_ARN" --message "{\"originationNumber\":\"+15555550100\",\"inboundMessageId\":\"smoke-$(date +%s)\",\"messageBody\":\"I do not recognize the Asteria charges.\"}"
+aws logs tail /aws/lambda/ThemisMessageNormalizer --since 5m
+```
+
+Finally, verify a real registered RCS/SMS interaction, the SES case email, the
+stored report under `reports/` in the artifacts bucket, durable merchant cache
+rows in `ThemisMerchants`, and the second-case cache-hit flow. Acceptance IDs
+are not delivery receipts, so inspect provider/SES delivery telemetry as well.
+
+## Messaging topic separation and IAM
+
+`InboundTopicArn` and `RcsInboundTopicArn` carry trusted customer messages and
+are the only topics subscribed to `ThemisMessageNormalizer`.
+`DeliveryEventTopicArn` carries ConfigurationSet delivery telemetry and has no
+normalizer subscription. Its resource policy grants only `sns:Publish` to the
+AWS End User Messaging SMS service, constrained by account and ConfigurationSet
+ARN. The inbound two-way role can publish only to the SMS inbound topic.
+
+The tools adapter can read/write its Dynamo/S3 system of record and invoke the
+fixed messaging Lambda. It does not send SES or SMS directly. The Runtime can
+invoke its configured models, Gateway and Memory; it does not access tables or
+S3 directly.
+
+## Manual steps and teardown
+
+RCS registration, SMS identity provisioning, SES verification, live Gateway
+wire validation, and Amplify OAuth connection remain manual. See the infra
+handoffs for provider-specific details. These steps deliberately remain out of
+automated tests.
+
+Data resources use `RemovalPolicy.DESTROY`, and the artifacts bucket is private,
+encrypted, auto-emptied, and destroyable. This is appropriate only for the
+synthetic hackathon environment.

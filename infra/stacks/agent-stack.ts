@@ -66,14 +66,6 @@ export class AgentStack extends cdk.Stack {
       actions: ['lambda:InvokeFunction'],
       resources: [`arn:aws:lambda:${this.region}:${this.account}:function:${MESSAGING_FUNCTION_NAME}`],
     }));
-    if (config.enableSes) {
-      // Scoped to identities under the configured sender domain, not "*".
-      toolsAdapterRole.addToPolicy(new iam.PolicyStatement({
-        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-        resources: [`arn:aws:ses:${this.region}:${this.account}:identity/${config.sesSenderDomain}`],
-      }));
-    }
-
     this.toolsAdapterLogGroup = new logs.LogGroup(this, 'ToolsAdapterLogGroup', {
       logGroupName: '/aws/lambda/ThemisToolsAdapter',
       retention: logs.RetentionDays.TWO_WEEKS,
@@ -89,10 +81,11 @@ export class AgentStack extends cdk.Stack {
       memorySize: 256,
       logGroup: this.toolsAdapterLogGroup,
       environment: {
-        THEMIS_MODE: config.themisMode,
+        THEMIS_MODE: 'aws',
         TRANSACTIONS_TABLE: data.transactionsTable.tableName,
         CASES_TABLE: data.casesTable.tableName,
         MERCHANTS_TABLE: data.merchantsTable.tableName,
+        MERCHANT_PROFILE_TABLE: data.merchantsTable.tableName,
         AUDIT_TABLE: data.auditTable.tableName,
         IDEMPOTENCY_TABLE: data.idempotencyTable.tableName,
         ARTIFACTS_BUCKET: data.artifactsBucket.bucketName,
@@ -243,7 +236,7 @@ export class AgentStack extends cdk.Stack {
         },
       },
       environmentVariables: {
-        THEMIS_MODE: config.themisMode,
+        THEMIS_MODE: 'aws',
         ENABLE_PROACTIVE_DETECTION: String(config.enableProactiveDetection),
         ENABLE_BROWSER_RESEARCH: String(config.enableBrowserResearch),
         ENABLE_REASONING_ESCALATION: String(config.enableReasoningEscalation),
