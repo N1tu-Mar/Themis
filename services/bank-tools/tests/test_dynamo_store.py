@@ -64,7 +64,7 @@ def test_claim_is_atomic_and_exclusive(db):
     assert first.state == CLAIMED and first.owner
     assert db.claim_idempotency("t", "k", "fp").state == IN_PROGRESS  # second caller loses the conditional put
     assert db.claim_idempotency("t", "k", "other").state == MISMATCH
-    CURRENT_LEASE.set(first.owner)
+    CURRENT_LEASE.set(("t", "k", first.owner))
     db.remember_result("t", "k", {"status": "ok", "n": 1})
     replay = db.claim_idempotency("t", "k", "fp")
     assert (replay.state, replay.result) == (REPLAY, {"status": "ok", "n": 1})
@@ -77,10 +77,10 @@ def test_expired_lease_can_be_taken_over_but_only_with_same_fingerprint(db):
 
 
 def test_release_only_removes_in_progress_claims(db, fake):
-    CURRENT_LEASE.set(db.claim_idempotency("t", "k", "fp").owner)
+    CURRENT_LEASE.set(("t", "k", db.claim_idempotency("t", "k", "fp").owner))
     db.release_idempotency("t", "k")
     assert fake.count("idem") == 0
-    CURRENT_LEASE.set(db.claim_idempotency("t", "k", "fp").owner)
+    CURRENT_LEASE.set(("t", "k", db.claim_idempotency("t", "k", "fp").owner))
     db.remember_result("t", "k", {"status": "ok"})
     db.release_idempotency("t", "k")  # conditional failure swallowed; completed result kept
     assert db.idempotent_result("t", "k") == {"status": "ok"}

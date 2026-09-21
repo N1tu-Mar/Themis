@@ -33,8 +33,8 @@ from .models import (
     MerchantProfile, PolicyDecision, PolicyOutcome, Transaction, now_iso,
 )
 from .store import (
-    CLAIM_LEASE_SECONDS, CLAIMED, CURRENT_LEASE, IN_PROGRESS, MISMATCH, REPLAY, IdempotencyClaim, _parse_ts,
-    build_audit_record, new_id, normalize_descriptor,
+    CLAIM_LEASE_SECONDS, CLAIMED, IN_PROGRESS, MISMATCH, REPLAY, IdempotencyClaim, _parse_ts,
+    build_audit_record, lease_owner, new_id, normalize_descriptor,
 )
 
 IDEMPOTENCY_TTL_SECONDS = 7 * 24 * 3600
@@ -185,14 +185,14 @@ class DynamoBankToolsStore:
             return IdempotencyClaim(IN_PROGRESS)
         return IdempotencyClaim(IN_PROGRESS)
 
-    def _owner_condition(self) -> tuple[str, dict[str, Any]]:
-        """Condition that only the holder of CURRENT_LEASE passes. Tokenless callers (direct tool use, rows
+    def _owner_condition(self, tool: str, key: str) -> tuple[str, dict[str, Any]]:
+        """Condition that only the holder of this slot's lease passes. Tokenless callers (direct tool use, rows
         written before owner tokens existed) match only rows with no leaseOwner, never a live token holder."""
-        token = CURRENT_LEASE.get()
+        token = lease_owner(tool, key)
         return ("leaseOwner = :owner", {":owner": token}) if token else ("attribute_not_exists(leaseOwner)", {})
 
     def release_idempotency(self, tool: str, key: str) -> None:
-        owned, values = self._owner_condition()
+        owned, values = self._owner_condition(tool, key)
         try:
             self._c.delete_item(
                 TableName=self._t.idempotency, Key=_item(idempotencyKey=f"{tool}#{key}"),
@@ -212,7 +212,7 @@ class DynamoBankToolsStore:
     def remember_result(self, tool: str, key: str | None, result: dict[str, Any]) -> None:
         if not key:
             return
-        owned, values = self._owner_condition()  # status not checked: the owner may complete twice (tool, then dispatch)
+        owned, values = self._owner_condition(tool, key)  # status not checked: the owner may complete twice (tool, then dispatch)
         try:
             self._c.update_item(
                 TableName=self._t.idempotency, Key=_item(idempotencyKey=f"{tool}#{key}"),

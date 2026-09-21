@@ -222,7 +222,7 @@ def dispatch(store: BankToolsStorage, tool_name: str, arguments: Any, extra: dic
 
     # ponytail: an exception (e.g. store outage) leaves the claim until its lease expires, then a retry re-runs.
     # Every store write below is conditional on this claim's owner token; a stale worker gets LeaseLostError.
-    token = CURRENT_LEASE.set(claim.owner)
+    token = CURRENT_LEASE.set((tool_name, key, claim.owner))
     try:
         result = _run(store, spec, kwargs)
         if result["status"] == "ok":

@@ -52,9 +52,15 @@ def new_id(prefix: str) -> str:
 # with different arguments.
 CLAIMED, REPLAY, IN_PROGRESS, MISMATCH = "CLAIMED", "REPLAY", "IN_PROGRESS", "MISMATCH"
 CLAIM_LEASE_SECONDS = 60
-# Owner token of the lease the current worker holds. dispatch sets it after a CLAIMED claim; stores read it in
-# remember_result/release_idempotency so tool signatures stay frozen. Unset (direct tool use, legacy rows) = tokenless.
-CURRENT_LEASE: contextvars.ContextVar[str | None] = contextvars.ContextVar("CURRENT_LEASE", default=None)
+# (tool, key, owner token) of the lease the current worker holds. dispatch sets it after a CLAIMED claim so tool
+# signatures stay frozen; stores fence only that slot (a tool may nest another tool under its own key).
+CURRENT_LEASE: contextvars.ContextVar[tuple[str, str, str] | None] = contextvars.ContextVar("CURRENT_LEASE", default=None)
+
+
+def lease_owner(tool: str, key: str) -> str | None:
+    """Owner token this worker holds for (tool, key); None = tokenless (direct tool use, nested keys, legacy rows)."""
+    held = CURRENT_LEASE.get()
+    return held[2] if held and held[:2] == (tool, key) else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,7 +177,7 @@ class BankToolsStore:
         return self._idempotency.get((tool, key))
 
     def _owns(self, slot: tuple[str, str]) -> bool:
-        token = CURRENT_LEASE.get()
+        token = lease_owner(*slot)
         return token is None or (slot in self._claims and self._claims[slot][2] == token)
 
     def remember_result(self, tool: str, key: str | None, result: dict[str, Any]) -> None:

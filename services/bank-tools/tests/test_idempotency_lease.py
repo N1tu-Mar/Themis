@@ -21,7 +21,7 @@ def db(request):
 
 
 def as_owner(claim):
-    CURRENT_LEASE.set(claim.owner)
+    CURRENT_LEASE.set(("t", "k", claim.owner))
 
 
 def test_acquire_and_complete_then_replay(db):
@@ -115,7 +115,7 @@ def test_dispatch_stale_worker_cannot_overwrite_successor(db, monkeypatch):
     first = dispatch(db, "create_case", CREATE)
     assert first["error"]["code"] == "IDEMPOTENCY_IN_PROGRESS"
     assert taken["b"].state == CLAIMED and db.idempotent_result("create_case", "k1") is None
-    as_owner(taken["b"])
+    CURRENT_LEASE.set(("create_case", "k1", taken["b"].owner))
     db.remember_result("create_case", "k1", {"status": "ok", "who": "B"})
     assert db.idempotent_result("create_case", "k1")["who"] == "B"
 
@@ -188,3 +188,9 @@ def test_tokenless_caller_cannot_mutate_owned_lease_but_can_mutate_legacy():
     _legacy(fake, "IN_PROGRESS", 30)
     db.remember_result("t", "k", {"status": "ok"})
     assert db.idempotent_result("t", "k") == {"status": "ok"}
+
+
+def test_lease_fences_only_its_own_slot(db):  # escalate_case nests update_case under a different key
+    as_owner(db.claim_idempotency("t", "k", "fp"))
+    db.remember_result("t", "inner", {"status": "ok"})
+    assert db.idempotent_result("t", "inner") == {"status": "ok"}
