@@ -100,3 +100,38 @@ test('does not provision a real phone number or pool (manual step, not reproduci
   t.resourceCountIs('AWS::SMSVOICE::PhoneNumber', 0);
   t.resourceCountIs('AWS::SMSVOICE::Pool', 0);
 });
+
+test('claim reconciler: scheduled, bounded, and reads open claims through a sparse KEYS_ONLY index (no Scan)', () => {
+  const app = new cdk.App();
+  const config = loadConfig();
+  const data = new DataStack(app, 'RData', { config });
+  const agent = new AgentStack(app, 'RAgent', { config, data });
+  const msg = new MessagingStack(app, 'RMessaging', { config, data, agent });
+  Template.fromStack(data).hasResourceProperties('AWS::DynamoDB::Table', {
+    GlobalSecondaryIndexes: [Match.objectLike({
+      IndexName: 'ClaimStateIndex', Projection: { ProjectionType: 'KEYS_ONLY' },
+      KeySchema: [{ AttributeName: 'claimState', KeyType: 'HASH' }, { AttributeName: 'claimedAt', KeyType: 'RANGE' }],
+    })],
+  });
+  const t = Template.fromStack(msg);
+  t.hasResourceProperties('AWS::Lambda::Function', {
+    FunctionName: 'ThemisClaimReconciler', Handler: 'reconciler.handler', Timeout: 60,
+    Environment: { Variables: Match.objectLike({ RECONCILE_STALE_SECONDS: '300', RECONCILE_BATCH_SIZE: '25', RECONCILE_MAX_ATTEMPTS: '3', RECONCILE_BUDGET_SECONDS: '40' }) },
+  });
+  t.hasResourceProperties('AWS::Lambda::EventInvokeConfig', { MaximumRetryAttempts: 0 });
+  t.hasResourceProperties('AWS::Events::Rule', { ScheduleExpression: 'rate(5 minutes)', State: 'ENABLED' });
+});
+
+test('claim reconciler role: least privilege (no AgentCore, SES, SNS, DeleteItem, Scan, or wildcard actions)', () => {
+  const t = synth();
+  const roles = t.findResources('AWS::IAM::Role');
+  const roleId = Object.entries(roles).find(([, r]) => r.Properties.Description?.startsWith('Scheduled claim reconciler'))[0];
+  const policy = Object.values(t.findResources('AWS::IAM::Policy'))
+    .find(p => p.Properties.Roles?.some(r => r.Ref === roleId));
+  const statements = policy.Properties.PolicyDocument.Statement;
+  const actions = statements.flatMap(s => [].concat(s.Action)).sort();
+  assert.deepEqual(actions, ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:UpdateItem', 'sms-voice:SendRcsMessage', 'sms-voice:SendTextMessage']);
+  const query = statements.find(s => s.Action === 'dynamodb:Query');
+  assert.match(JSON.stringify(query.Resource), /index\/ClaimStateIndex/);
+  assert.doesNotMatch(JSON.stringify(policy.Properties.PolicyDocument), /bedrock-agentcore|ses:|sns:|"\*"/);
+});
