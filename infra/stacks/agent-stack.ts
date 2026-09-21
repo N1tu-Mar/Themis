@@ -93,6 +93,10 @@ export class AgentStack extends cdk.Stack {
         ENABLE_SES: String(config.enableSes),
         DEMO_AUTONOMOUS_CREDIT_LIMIT: String(config.provisionalCreditAutoApproveLimit),
         DEMO_CREDIT_CONFIDENCE_THRESHOLD: String(config.creditConfidenceThreshold),
+        // Merchant-intel will also require an injected approved provider and
+        // source allowlist before any browser-backed refresh can occur.
+        MERCHANT_RESEARCH_ENABLED: String(config.enableBrowserResearch),
+        MERCHANT_RESEARCH_APPROVED: String(config.browserResearchApproved),
       },
     });
 
@@ -203,7 +207,7 @@ export class AgentStack extends cdk.Stack {
       actions: ['bedrock-agentcore:GetEvent', 'bedrock-agentcore:CreateEvent', 'bedrock-agentcore:ListEvents', 'bedrock-agentcore:RetrieveMemoryRecords'],
       resources: [this.memory.attrMemoryArn],
     }));
-    if (config.enableBrowserResearch) {
+    if (config.enableBrowserResearch && config.browserResearchApproved) {
       // AWS-managed default Browser tool - no CfnBrowserCustom resource
       // needed (see class doc comment). Scoped to this account/region, not
       // "*", but the default browser has no per-resource ARN to narrow to
@@ -239,6 +243,7 @@ export class AgentStack extends cdk.Stack {
         THEMIS_STRUCTURED_TOOLS: 'true',
         ENABLE_PROACTIVE_DETECTION: String(config.enableProactiveDetection),
         ENABLE_BROWSER_RESEARCH: String(config.enableBrowserResearch),
+        BROWSER_RESEARCH_APPROVED: String(config.browserResearchApproved),
         ENABLE_REASONING_ESCALATION: String(config.enableReasoningEscalation),
         BEDROCK_MODEL_ID_FAST: config.bedrockModelIdFast,
         BEDROCK_MODEL_ID_REASONING: config.bedrockModelIdReasoning,

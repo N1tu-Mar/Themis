@@ -83,6 +83,12 @@ class AgentCoreMemory:
 
 
 class NoResearch:
-    """Browser research lives with merchant-intel; until that is wired the agent reports it unavailable."""
+    """Deterministic unavailable Browser provider.
+
+    The AgentCore Browser data-plane API has not been deployment-verified in
+    this repository. This adapter intentionally performs no network or AWS
+    Browser call, so an enabled-but-unavailable provider fails closed and the
+    case continues using the cache-backed merchant-intel Gateway tool.
+    """
     def research(self, descriptor: str, max_pages: int) -> dict[str, Any] | None:
         return None

@@ -115,13 +115,13 @@ test('provisions exactly one Runtime hosting the Themis orchestrator', () => {
 });
 
 test('does not provision a custom Browser or WorkloadIdentity resource (nothing uses them)', () => {
-  const t = synth({ enableBrowserResearch: true });
+  const t = synth({ enableBrowserResearch: true, browserResearchApproved: true });
   t.resourceCountIs('AWS::BedrockAgentCore::BrowserCustom', 0);
   t.resourceCountIs('AWS::BedrockAgentCore::WorkloadIdentity', 0);
 });
 
-test('grants browser IAM permission only when ENABLE_BROWSER_RESEARCH is set', () => {
-  const withBrowser = synth({ enableBrowserResearch: true });
+test('grants browser IAM permission only when explicitly enabled and approved', () => {
+  const withBrowser = synth({ enableBrowserResearch: true, browserResearchApproved: true });
   withBrowser.hasResourceProperties('AWS::IAM::Policy', {
     PolicyDocument: Match.objectLike({
       Statement: Match.arrayWith([
@@ -130,7 +130,7 @@ test('grants browser IAM permission only when ENABLE_BROWSER_RESEARCH is set', (
     }),
   });
 
-  const withoutBrowser = synth({ enableBrowserResearch: false });
+  const withoutBrowser = synth({ enableBrowserResearch: true, browserResearchApproved: false });
   const policies = withoutBrowser.findResources('AWS::IAM::Policy');
   const anyBrowserGrant = Object.values(policies).some((p) =>
     JSON.stringify(p.Properties.PolicyDocument).includes('StartBrowserSession'));

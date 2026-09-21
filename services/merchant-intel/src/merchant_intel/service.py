@@ -49,6 +49,7 @@ class CacheRecord:
     source_summary: str = "internal profile"
     case_states: dict[str, str] = field(default_factory=dict)  # case_id -> OPEN|RESOLVED(+DISPUTE); the processed-case ledger
     rev: int = -1  # storage revision for optimistic locking: -1 = not stored yet; put() must match the stored rev
+    sources: list[dict[str, str]] = field(default_factory=list)  # bounded URL/retrieval/content-type attribution; never page bodies
 
 
 class ConflictError(Exception):
@@ -141,6 +142,7 @@ class MerchantIntel:
             "status": status, "researchPerformed": performed, "researchError": error,
             "researchedAt": iso(rec.researched_at), "expiresAt": iso(rec.expires_at),
             "version": rec.version, "sourceSummary": rec.source_summary,
+            "sources": copy.deepcopy(rec.sources),
             "stale": now >= rec.expires_at}}
 
     def _merge(self, rec: CacheRecord, f: dict[str, Any], now: datetime) -> CacheRecord:
@@ -157,8 +159,12 @@ class MerchantIntel:
             p["updatedAt"] = iso(now)
             validate("MerchantProfile", p)
             try:
+                sources = [s for s in f.get("sources", []) if isinstance(s, dict)
+                           and isinstance(s.get("url"), str) and isinstance(s.get("retrievedAt"), str)
+                           and isinstance(s.get("contentType"), str)][:5]
                 return self.store.put(CacheRecord(p, now, now + self.ttl, rec.version + 1,
-                                                  f.get("sourceSummary", "external research"), rec.case_states, rec.rev))
+                                                  f.get("sourceSummary", "external research"), rec.case_states, rec.rev,
+                                                  copy.deepcopy(sources)))
             except ConflictError:
                 rec = self.store.get(p["merchantId"]) or rec
                 if now < rec.expires_at:
@@ -225,7 +231,7 @@ class MerchantIntel:
             validate("MerchantProfile", p)
             try:
                 self.store.put(CacheRecord(p, rec.researched_at, rec.expires_at, rec.version, rec.source_summary,
-                                           {**rec.case_states, case_id: state}, rec.rev))
+                                           {**rec.case_states, case_id: state}, rec.rev, rec.sources))
                 return p
             except ConflictError:
                 continue

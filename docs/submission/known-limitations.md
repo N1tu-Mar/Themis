@@ -4,7 +4,7 @@ This hackathon prototype deliberately prioritizes a safe, demonstrable dispute w
 
 - No live AWS deployment or provider identity registration is proven by the repository. CDK synthesis, packaging, assertions, and local composition are the current evidence.
 - AgentCore Runtime, Gateway, Policy, and Memory resource shapes still require live regional verification, including MCP tool naming and Cedar request context.
-- The deployed runtime currently uses the no-research adapter. AgentCore Browser permission is optional, but browser-backed merchant research is not connected.
+- The checked-in runtime uses a deterministic unavailable Browser provider. AgentCore Browser remains disabled by default and requires both enablement and `BROWSER_RESEARCH_APPROVED`; live session creation, URL/navigation response shape, redirect reporting, content limits, and regional IAM behavior still require deployment verification before wiring a live transport.
 - Delivery-event routing and durable status updates are implemented, but the provider's live event shapes and timing still require verification against a registered identity.
 - The Amplify dashboard is fixture-backed. It does not read live DynamoDB data, and review controls update local browser state only.
 - Delivery idempotency reduces duplicates, but there is no send lock for concurrent redeliveries. A crash between sending and recording the result can require operator reconciliation, and menu-record gaps are not automatically repaired.
