@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  CHOICES, DynamoDeliveryStore, MemoryActiveMenuStore, MemoryIdempotencyStore, createMessagingRuntime,
+  AMBIGUOUS_RUNTIME_FAILURE_REPLY, CHOICES, DynamoDeliveryStore, MemoryActiveMenuStore, MemoryIdempotencyStore, createMessagingRuntime,
   parseSuggestions, type Payload,
 } from '../src/index.ts';
 
@@ -63,13 +63,17 @@ function fakeDynamo() {
   };
 }
 
-function setup(options: { reply?: unknown; failText?: () => boolean; failSes?: () => boolean } = {}) {
+function setup(options: { reply?: unknown; failAgent?: () => boolean; failText?: () => boolean; failSes?: () => boolean } = {}) {
   const dynamo = fakeDynamo();
   const calls = { agent: 0, text: [] as Payload[], rcs: [] as Payload[], ses: 0, payloads: [] as { postback: string | null }[], menuPresentAtRcsSend: false };
   let reply: unknown = options.reply;
   const rt = createMessagingRuntime(env, {
     dynamo: dynamo.client,
-    agentRuntime: { invokeAgentRuntime: async (request) => { calls.agent++; calls.payloads.push(JSON.parse(new TextDecoder().decode(request.payload))); return reply; } },
+    agentRuntime: { invokeAgentRuntime: async (request) => {
+      calls.agent++; calls.payloads.push(JSON.parse(new TextDecoder().decode(request.payload)));
+      if (options.failAgent?.()) throw new Error('timeout after dispatch');
+      return reply;
+    } },
     messagingClient: {
       sendTextMessage: async (p) => {
         calls.text.push(p);
@@ -197,6 +201,19 @@ test('transport failure is retried from the delivery record without rerunning Ag
   assert.equal(t.calls.text.length, 2);
   assert.equal(t.calls.agent, 1);
   assert.ok([...t.dynamo.items.values()].some(i => i.state?.S === 'COMPLETED'));
+});
+
+test('ambiguous AgentCore failure sends one safe notice and never retries the agent turn', async () => {
+  const t = setup({ failAgent: () => true });
+
+  assert.deepEqual(await t.rt.handler(inbound(smsTopic, 'help', 'agent-fail-1')), ['processed']);
+  assert.equal(t.calls.agent, 1);
+  assert.equal(t.calls.text.length, 1);
+  assert.equal(t.calls.text[0].MessageBody, AMBIGUOUS_RUNTIME_FAILURE_REPLY);
+
+  assert.deepEqual(await t.rt.handler(inbound(smsTopic, 'help', 'agent-fail-1')), ['duplicate']);
+  assert.equal(t.calls.agent, 1);
+  assert.equal(t.calls.text.length, 1);
 });
 
 test('direct tool sends are idempotent by messageId', async () => {

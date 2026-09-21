@@ -93,6 +93,21 @@ def test_unknown_tool(any_store):
     assert code(dispatch(any_store, "get_audit_log", {"caseId": "case_seed"})) == "UNKNOWN_TOOL"
 
 
+@pytest.mark.parametrize("tool,args", [
+    ("get_case", {"caseId": "x" * 4097}),
+    ("create_case", {"customerId": "c", "claimType": "X", "idempotencyKey": "k" * 257}),
+    ("create_case", {"customerId": "c", "claimType": "X", "transactionIds": ["t"] * 101, "idempotencyKey": "k"}),
+    ("create_case", {"customerId": "c", "claimType": "X", "transactionIds": ["t" * 257], "idempotencyKey": "k"}),
+])
+def test_oversized_arguments_are_rejected_before_storage(any_store, tool, args):
+    assert code(dispatch(any_store, tool, args)) == "VALIDATION_ERROR"
+
+
+@pytest.mark.parametrize("name", [None, ["get_case"], "bad\nname", "x" * 65])
+def test_invalid_tool_names_are_rejected_without_exception(any_store, name):
+    assert code(dispatch(any_store, name, {})) == "UNKNOWN_TOOL"
+
+
 # -- replay ---------------------------------------------------------------------------------------
 
 def test_create_case_replay_returns_prior_result_without_duplicates(any_store):

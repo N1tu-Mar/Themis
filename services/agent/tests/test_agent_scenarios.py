@@ -42,7 +42,7 @@ def test_scenario_a_unknown_recurring_merchant_resolves_with_cached_intel():
     assert st["model_turns"] == 2                          # one inference per customer turn
     assert st["proposal"]["recommendedActions"] == ["CREATE_DISPUTE", "REVIEW_FUTURE_RECURRING_PAYMENT"]
     assert research.calls == [] and st["metrics"]["cache_hits"] == 1   # cached merchant intel: no research
-    assert tools(gw).count("generate_case_report") == 1 and "escalate_case" not in tools(gw)
+    assert tools(gw).count("generate_case_report") == 2 and "escalate_case" not in tools(gw)
     assert gw.names("search_transactions")[0]["descriptorContains"] == "Asteria"
     assert gw.names("propose_dispute_creation")[0]["hasConfirmedTransactions"] is True
     assert gw.cases["case_local_1"]["status"] == "RESOLVED"

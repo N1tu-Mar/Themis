@@ -3,7 +3,7 @@ import { DynamoDeliveryStore, type DeliveryDynamoClient, type DeliveryStore } fr
 import { createDeliveryEventHandler, OutboundService, sendCaseNotification, TERMINAL_CASE_STATUSES } from './delivery.ts';
 import { DynamoIdempotencyStore, type DynamoClient } from './idempotency.ts';
 import { createSnsHandler, InboundProcessor, type Channel } from './inbound.ts';
-import { AgentRuntimeConsumer, type AgentRuntimeClient } from './runtime.ts';
+import { AgentRuntimeConsumer, AgentRuntimeInvocationError, type AgentRuntimeClient } from './runtime.ts';
 import { ChannelAdapter, type MessagingClient } from './outbound.ts';
 import { SesAdapter, type SesClient } from './email.ts';
 import { OutboundMessageSchema } from '../../../packages/contracts/src/index.ts';
@@ -85,6 +85,9 @@ export interface RuntimeDependencies {
   readonly deliveryStore?: DeliveryStore;
 }
 
+export const AMBIGUOUS_RUNTIME_FAILURE_REPLY =
+  "I'm having trouble completing that request. To avoid duplicate account actions, I haven't retried it. Please contact support if you need immediate help.";
+
 type ToolEvent = { readonly themisTool?: unknown; readonly [key: string]: unknown };
 
 export function createMessagingRuntime(env: Record<string, string | undefined>, dependencies: RuntimeDependencies) {
@@ -110,7 +113,22 @@ export function createMessagingRuntime(env: Record<string, string | undefined>, 
       const answered = menu?.choices.some(c => c.postback === message.postback) ? menu : null;
       // Replies are recorded and sent after admission is claimed: a failed send is retried from the delivery
       // record on redelivery and never replays AgentCore.
-      const answer = await runtime.consume(message);
+      let answer;
+      try {
+        answer = await runtime.consume(message);
+      } catch (error) {
+        if (!(error instanceof AgentRuntimeInvocationError) || !outbound) throw error;
+        // A timeout is ambiguous: AgentCore may already have changed case or
+        // account state. Never invoke it again automatically. Record and send
+        // one deterministic notice under the normal reply delivery key; if
+        // this send fails, duplicate SNS delivery resumes only this message.
+        await outbound.deliver(OutboundMessageSchema.parse({
+          channel: message.channel, customerExternalId: message.customerExternalId,
+          messageId: `reply:${message.messageId}`, caseId: 'no-case-yet',
+          text: AMBIGUOUS_RUNTIME_FAILURE_REPLY,
+        }), true);
+        return;
+      }
       if (answered) await activeMenus.clear(answered.customerExternalId, answered.caseId, answered.menuId);
       const terminal = TERMINAL_CASE_STATUSES.has(answer?.status ?? '');
       if (terminal && answer?.caseId) await activeMenus.clear(message.customerExternalId, answer.caseId);

@@ -10,6 +10,7 @@ envelope is also accepted so the adapter can be invoked directly.
 import json
 import logging
 import os
+import re
 from pathlib import Path
 
 logger = logging.getLogger()
@@ -54,11 +55,14 @@ def _build():
 
 
 def parse_event(event, context):
+    if not isinstance(event, dict):
+        return "unknown", {}
     custom = getattr(getattr(context, "client_context", None), "custom", None) or {}
     name = custom.get("bedrockAgentCoreToolName")
-    if name:
+    if isinstance(name, str) and name:
         return name.split("___", 1)[-1], event
-    return (event.get("toolName") or event.get("name") or "unknown"), event.get("input", event.get("arguments", {}))
+    direct = event.get("toolName") or event.get("name") or "unknown"
+    return direct if isinstance(direct, str) else "unknown", event.get("input", event.get("arguments", {}))
 
 
 def handler(event, context):
@@ -68,5 +72,6 @@ def handler(event, context):
         _adapter = _adapter or _build()
         return _adapter.call(tool, arguments)
     except Exception as exc:  # noqa: BLE001 - never leak internals to the model
-        logger.exception("tool %s failed", tool)
+        safe_tool = re.sub(r"[^A-Za-z0-9_]", "?", str(tool))[:64]
+        logger.exception("tool %s failed", safe_tool)
         return {"status": "error", "error": {"code": "INTERNAL_ERROR", "message": type(exc).__name__}}

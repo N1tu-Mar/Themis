@@ -28,6 +28,9 @@ RECOGNIZED_MSG = "Glad we could sort that out. I've noted that you recognize thi
 
 DENIAL_CLAIMS = ("UNAUTHORIZED_TRANSACTION", "UNRECOGNIZED_MERCHANT", "RECURRING_PAYMENT_NOT_AUTHORIZED")
 CLAIM_KEYS = ("recognizes_merchant", "canceled", "denies_authorization", "requested_block")
+MAX_CUSTOMER_MESSAGE_CHARS = 4_000
+IDENTITY_MISMATCH_MSG = "I can't access that conversation for this customer. Please start a new conversation or contact support."
+MESSAGE_TOO_LONG_MSG = "That message is too long for me to process safely. Please resend a shorter description of the charge."
 
 
 class ToolFailure(Exception):
@@ -98,7 +101,17 @@ class Orchestrator:
 
     def handle_turn(self, conversation_id: str, customer_id: str, message: str) -> Reply:
         raw = self.memory.load(conversation_id)
-        st = CaseState.from_dict(raw) if raw else CaseState(conversation_id, customer_id)
+        if raw:
+            st = CaseState.from_dict(raw)
+            # Conversation IDs are channel identities. Never attach an existing
+            # conversation to a different bank customer if a directory mapping is
+            # changed or a caller supplies inconsistent identity fields.
+            if st.customer_id != customer_id:
+                return Reply(IDENTITY_MISMATCH_MSG, "UNVERIFIED")
+        else:
+            st = CaseState(conversation_id, customer_id)
+        if len(message) > MAX_CUSTOMER_MESSAGE_CHARS:
+            return Reply(MESSAGE_TOO_LONG_MSG, "INPUT_REJECTED", st.case_id)
         try:
             text = self._turn(st, message)
         except ToolFailure as exc:
@@ -207,6 +220,25 @@ class Orchestrator:
                 return self._escalate(st, "TRANSACTION_MATCHING_UNCERTAIN", "No matching transactions found after two attempts.")
             return self._ask(st, "matching", ASK_MORE)
         self._resolve_merchant(st)
+        if st.merchant_id:
+            # The first descriptor search is intentionally narrow. Once that
+            # descriptor resolves to a trusted directory merchant, repeat the
+            # bounded search by merchant ID so alias variants (for example a
+            # compact card descriptor) are offered in the same confirmation.
+            expanded_args = {
+                "customerId": st.customer_id, "merchantId": st.merchant_id,
+                "since": (today - timedelta(days=self.cfg.match_window_days)).isoformat(),
+                "limit": 50, "caseId": st.case_id,
+            }
+            if (amt := st.hints.get("amount")) is not None:
+                expanded_args["minAmount"], expanded_args["maxAmount"] = amount_bounds(amt)
+            expanded = self._try(st, "search_transactions", **expanded_args)
+            if expanded:
+                st.candidates = prefilter(
+                    expanded.get("transactions", []),
+                    {"amount": st.hints["amount"]} if st.hints.get("amount") is not None else {"descriptor": st.merchant_name},
+                    today=today, window_days=self.cfg.match_window_days, max_candidates=self.cfg.max_candidates,
+                ) or st.candidates
         self._move(st, "AWAITING_TRANSACTION_CONFIRMATION")
         return self._proposal_text(st)
 
@@ -300,9 +332,12 @@ class Orchestrator:
         st.classification, st.outcome = None, "CUSTOMER_RECOGNIZED_MERCHANT"
         self._ev(st, "CUSTOMER_CLAIMS", "CUSTOMER_RECOGNIZED_MERCHANT",
                  "Customer recognized the merchant after identification; no dispute opened.", "CUSTOMER", "HIGH")
+        # Verify that report generation is available before entering a terminal
+        # state. A failure can still transition this case to human review.
+        self._report(st, required=True, phase="pre-final")
         # outcome rides on the status update: the bank refuses early RESOLVED without it
         self._move(st, "RESOLVED", **({"outcome": st.outcome} if self.cfg.structured_tools else {}))
-        self._report(st)
+        self._report(st, phase="final")
         return RECOGNIZED_MSG
 
     # -- investigation -> proposal -> policy -----------------------------------
@@ -457,9 +492,12 @@ class Orchestrator:
             st.policy_results.append({"action": action, "outcome": outcome or "MISSING"})
             if outcome != "ALLOW":   # DENY, REQUIRE_HUMAN_REVIEW, or anything unexpected: fail closed
                 return self._escalate(st, f"POLICY_{outcome or 'UNKNOWN'}", f"Policy did not allow {action}; human review required.")
+        # Required artifact generation while POLICY_REVIEW can still fail
+        # closed into NEEDS_HUMAN_REVIEW.
+        self._report(st, required=True, phase="pre-final")
         self._move(st, "ACTION_APPROVED")
         self._move(st, "RESOLVED")
-        self._report(st)
+        self._report(st, phase="final")
         return self._resolved_text(st)
 
     def _stored_state_matches(self, st: CaseState) -> bool:
@@ -496,8 +534,12 @@ class Orchestrator:
         e["delivered"] = self._try(st, "escalate_case", caseId=st.case_id, **args,
                                    idempotencyKey=self._key(st, f"escalate:{e['reason']}")) is not None
 
-    def _report(self, st: CaseState) -> None:
-        self._try(st, "generate_case_report", caseId=st.case_id, idempotencyKey=self._key(st, "report"))
+    def _report(self, st: CaseState, *, required: bool = False, phase: str = "current") -> None:
+        args = {"caseId": st.case_id, "idempotencyKey": self._key(st, f"report:{phase}")}
+        if required:
+            self._call(st, "generate_case_report", **args)
+        else:
+            self._try(st, "generate_case_report", **args)
 
     # -- tool + evidence plumbing ----------------------------------------------
 

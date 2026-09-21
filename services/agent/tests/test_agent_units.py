@@ -3,7 +3,8 @@ from datetime import date
 import pytest
 
 from orchestrator.config import Config
-from orchestrator.engine import clean_analysis
+from orchestrator.engine import IDENTITY_MISMATCH_MSG, MESSAGE_TOO_LONG_MSG, Orchestrator, clean_analysis
+from orchestrator.local import InMemoryMemory, LocalGateway, ScriptedModel, StubResearch
 from orchestrator.prefilter import prefilter
 from orchestrator.state import TRANSITIONS, CaseState
 
@@ -47,3 +48,25 @@ def test_config_from_env_validates():
         Config.from_env({"THEMIS_MODE": "prod"})
     with pytest.raises(ValueError):
         Config.from_env({"THEMIS_ESCALATION_CONFIDENCE": "2"})
+
+
+def test_conversation_state_cannot_be_reused_by_a_different_customer():
+    memory = InMemoryMemory()
+    agent = Orchestrator(model=ScriptedModel({}), gateway=LocalGateway.demo(TODAY), memory=memory, research=StubResearch())
+    agent.handle_turn("phone-number", "customer_demo_001", "hello")
+    before = memory.load("phone-number")
+
+    reply = agent.handle_turn("phone-number", "customer_demo_002", "show me the prior case")
+
+    assert (reply.status, reply.text) == ("UNVERIFIED", IDENTITY_MISMATCH_MSG)
+    assert memory.load("phone-number") == before
+
+
+def test_oversized_message_is_not_sent_to_model_or_persisted():
+    memory, model = InMemoryMemory(), ScriptedModel({})
+    agent = Orchestrator(model=model, gateway=LocalGateway.demo(TODAY), memory=memory, research=StubResearch())
+
+    reply = agent.handle_turn("conversation", "customer_demo_001", "x" * 4_001)
+
+    assert (reply.status, reply.text) == ("INPUT_REJECTED", MESSAGE_TOO_LONG_MSG)
+    assert model.views == [] and memory.load("conversation") is None
