@@ -121,6 +121,19 @@ def test_delivery_failure_never_touches_the_case(tool, args):
     reconcile_case(w, case_id)
 
 
+def test_ses_rejection_is_reported_as_delivery_failed_and_leaves_the_case_alone():
+    w = world()
+    case_id = open_case(w)
+    before, report = w.store.get_case(case_id).to_dict(), w.reports.get(case_id)
+    w.messenger.soft_fail = {"send_case_email"}
+    r = w.adapter.call("send_case_email", {"caseId": case_id, "idempotencyKey": "k-ses"})
+    assert r["error"]["code"] == "DELIVERY_FAILED" and r["caseStatus"] == "RESOLVED" and w.messenger.sent == []
+    assert w.store.get_case(case_id).to_dict() == before and w.reports.get(case_id) == report
+    w.messenger.soft_fail = set()  # nothing committed, so the same key may be retried and sends once
+    assert w.adapter.call("send_case_email", {"caseId": case_id, "idempotencyKey": "k-ses"})["status"] == "ok"
+    assert len(w.messenger.sent) == 1
+
+
 def test_email_before_report_is_refused_not_faked():
     w = world()
     case_id = w.adapter.call("create_case", {"customerId": C, "claimType": "INSUFFICIENT_INFORMATION", "transactionIds": ["txn_demo_0001"],
@@ -150,8 +163,6 @@ def test_report_failure_is_never_reported_as_success():
     assert w.reports.get(r.case_id) is not None or "prepared a report" not in r.text
 
 
-@pytest.mark.xfail(strict=True, reason="defect: stale-profile research on the Dynamo profile store returns NOT_FOUND on the first call "
-                   "(put() returns None). See .handoffs/infra/2026-09-21-qa-router-defects.md")
 def test_stale_profile_refresh_returns_the_refreshed_profile_on_first_call():
     w = world()
     w.clock.t = datetime(2026, 9, 26, tzinfo=UTC)

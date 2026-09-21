@@ -1,13 +1,10 @@
-# QA findings in tools-adapter (from qa-demo). Repro: `pytest tests/e2e -k "xfail or twice or refresh"`; each has a strict xfail.
+# QA notes on tools-adapter (from qa-demo)
 
-1. `infra/lambda/tools-adapter/dynamo_profile_store.py` `DynamoProfileStore.put()` returns None. `MerchantIntel._merge` returns its
-   result, so the first `get_merchant_profile` on a stale profile performs the research, persists it, and answers
-   `NOT_FOUND` (`test_stale_profile_refresh_returns_the_refreshed_profile_on_first_call`). The agent's transparent retry hides it
-   (second call is a cache hit; research still runs once). Fix: return the stored `CacheRecord`. Note the store also drops the
-   optimistic-lock `rev` / ConflictError contract of `merchant_intel.DynamoProfileStore`, so concurrent refreshes can double-research.
-2. `router.escalate_case` does not dedupe: two calls with different idempotency keys queue two human-review requests
-   (`test_escalating_twice_with_new_keys_queues_one_review`). `orchestrator.workflow.escalate_case` already dedupes by reason.
-   Suggest delegating to it.
-3. Info: a raising messenger (`send_customer_message`/`send_case_email`) leaves the idempotency claim IN_PROGRESS, so an immediate retry
-   with the same key returns `IDEMPOTENCY_IN_PROGRESS` until the lease expires (safe, never double-sends, but not the "retry
-   with the same key is safe and sends once" wording in the messaging handoff). Covered by `test_delivery_failure_never_touches_the_case`.
+Two defects found on a391623 (profile store `put()` returned None so the first stale-profile read answered NOT_FOUND;
+`escalate_case` queued a duplicate review for a fresh key) were fixed by b961271; their e2e tests now pass as normal tests.
+
+Remaining, informational: when the messaging transport raises (`send_customer_message` / `send_case_email`), bank-tools leaves the
+idempotency claim IN_PROGRESS, so an immediate retry with the same key returns `IDEMPOTENCY_IN_PROGRESS` until the lease expires.
+Safe (never double-sends) but slower than "retry with the same key is safe and sends once" in the messaging handoff. A soft
+`{"status": "FAILED"}` (SES rejection) releases the claim and retries fine. Pinned by
+`tests/e2e/test_failures.py::test_delivery_failure_never_touches_the_case` and `::test_ses_rejection_...`.

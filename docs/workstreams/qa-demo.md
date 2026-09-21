@@ -16,16 +16,16 @@ COMPLETE (local); AWS smoke script written, never run live.
 
 - Python: `world.World(permits, model, researcher, clock, config)`, `.chat()`, `.restart()`, `.gateway.fail(tool, n, kind)`, `.messenger.fail`, `reconcile_case`, `reconcile_world`.
 - Reuses (does not edit): `tests/integration/harness.py` (CedarGate), `services/bank-tools/tests/fake_dynamo.py`, `infra/lambda/tools-adapter`.
-- Scenarios run with `Config(structured_tools=True)`; with it off, Scenario C stays CLASSIFYING_DISPUTE server-side (schema must be deployed first).
+- World pins `Config(structured_tools=True)` (now the default after b961271).
 
-## KNOWN ISSUES (filed, each a strict xfail that flips when fixed)
+## KNOWN ISSUES (agentcore items are strict xfails that flip when fixed)
 
 - agentcore `2026-09-21-qa-alias-candidates.md`: Scenario A matches 5 of 6 charges.
 - agentcore `2026-09-21-qa-report-failure.md`: failed report swallowed, customer told it was prepared.
-- infra `2026-09-21-qa-router-defects.md`: profile store `put()` returns None (first stale read = NOT_FOUND); `escalate_case` not deduped across keys; raising messenger leaves IN_PROGRESS claim.
+- infra `2026-09-21-qa-router-defects.md`: profile-store/escalate defects fixed by b961271; raising messenger still leaves an IN_PROGRESS claim until lease expiry (info).
 - messaging `2026-09-21-qa-stuck-claims.md`: failed agent invoke leaves customer unanswered (reconciler unwired).
 - Root `npm test` does not run `tests/e2e`; integration should add `pytest tests/e2e` and `node --test tests/e2e/*.test.ts`.
-- Base was local `main` (has Wave 2A merges); `origin/main` is 8 commits behind.
+- Based on local `main` b961271 (Wave 2A complete); `origin/main` is behind and was not used.
 
 ## NEXT 3 TASKS
 
@@ -35,7 +35,7 @@ COMPLETE (local); AWS smoke script written, never run live.
 
 ## LAST TEST COMMAND + RESULT
 
-- `python3 -m pytest -q tests/e2e` -> 37 passed, 4 xfailed; `node --test tests/e2e/*.test.ts` -> 5 passed; `tests/integration` 13 passed.
+- `python3 -m pytest -q tests/e2e tests/integration` -> 58 passed, 2 xfailed (strict, filed defects); `node --test tests/e2e/*.test.ts` -> 5 passed.
 
 ## LAST CODE COMMIT
 

@@ -26,7 +26,7 @@ Known deviation to mention only if asked: Scenario A shows 5 of the 6 fixture ch
 ## 2. Verify (no paid calls)
 
 ```sh
-python3 -m pytest -q tests/e2e            # 37 pass, 4 strict xfails = filed defects (see .handoffs/*/2026-09-21-qa-*)
+python3 -m pytest -q tests/e2e            # all pass; 2 strict xfails = filed agentcore defects (.handoffs/agentcore/2026-09-21-qa-*)
 node --test tests/e2e/*.test.ts           # messaging-boundary duplicates / failures
 ```
 

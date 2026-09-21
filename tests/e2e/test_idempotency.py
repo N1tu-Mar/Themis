@@ -62,10 +62,9 @@ def test_same_key_different_arguments_is_rejected_and_writes_nothing(w):
     assert r["error"]["code"] == "IDEMPOTENCY_KEY_REUSED" and rows(w, case) == n
 
 
-@pytest.mark.xfail(strict=True, reason="defect: router.escalate_case queues a second review for a fresh key; "
-                   "see .handoffs/infra/2026-09-21-qa-router-defects.md")
 def test_escalating_twice_with_new_keys_queues_one_review(w):
     case = new_case(w)
+    assert w.adapter.call("update_case", {"caseId": case, "status": "INTAKE", "idempotencyKey": "k-intake"})["status"] == "ok"
     for k in ("e1", "e2"):
         assert w.adapter.call("escalate_case", {"caseId": case, "reason": "QA_TWICE", "idempotencyKey": k})["status"] == "ok"
     assert len(w.store.human_review_requests_for_case(case)) == 1

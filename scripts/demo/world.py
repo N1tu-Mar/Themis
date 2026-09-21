@@ -17,9 +17,8 @@ for _p in ("tests/integration", "services/bank-tools/tests"):
 import harness  # noqa: E402  (also puts the service packages + tools-adapter on sys.path)
 from bank_tools.dynamo_store import DynamoBankToolsStore, from_attr  # noqa: E402
 from bank_tools.fixtures import load_demo_store  # noqa: E402
-from dynamo_profile_store import DynamoProfileStore  # noqa: E402
 from fake_dynamo import TABLES, FakeDynamo  # noqa: E402
-from merchant_intel import MerchantIntel  # noqa: E402
+from merchant_intel import DynamoProfileStore, MerchantIntel  # noqa: E402
 from orchestrator.config import Config  # noqa: E402
 from orchestrator.engine import Orchestrator  # noqa: E402
 from orchestrator.local import HeuristicModel, InMemoryMemory, StubResearch  # noqa: E402
@@ -35,7 +34,12 @@ PROFILES = ROOT / "fixtures/merchants/demo-profiles.json"
 
 
 class DemoDynamo(FakeDynamo):
-    """bank-tools' fake plus the two calls seeding/reset/profile-store need."""
+    """bank-tools' fake plus what merchant-intel's profile store and the seed/reset scripts need."""
+    def put_item(self, TableName, Item, ConditionExpression=None, ExpressionAttributeValues=None, ExpressionAttributeNames=None):
+        for name, attr in (ExpressionAttributeNames or {}).items():
+            ConditionExpression = ConditionExpression and ConditionExpression.replace(name, attr)
+        super().put_item(TableName, Item, ConditionExpression, ExpressionAttributeValues, {})
+
     def scan(self, TableName, FilterExpression=None, ExpressionAttributeValues=None, **_):
         items = list(self.rows[TableName].values())
         if FilterExpression:
@@ -69,14 +73,18 @@ class CountingResearcher:
 
 
 class Messenger:
-    """Messaging-service stand-in behind send_customer_message/send_case_email. `fail` = tool names that raise."""
+    """Messaging-service stand-in behind send_customer_message/send_case_email.
+    `fail` = tool names that raise (outcome unknown); `soft_fail` = tools that answer {"status": "FAILED"} (e.g. SES rejected)."""
     def __init__(self) -> None:
         self.sent: list[dict[str, Any]] = []
         self.fail: set[str] = set()
+        self.soft_fail: set[str] = set()
 
     def __call__(self, request: dict[str, Any]) -> dict[str, Any]:
         if request["themisTool"] in self.fail:
             raise RuntimeError(f"{request['themisTool']} transport failure")
+        if request["themisTool"] in self.soft_fail:
+            return {"status": "FAILED", "error": "delivery rejected"}
         self.sent.append(request)
         return {"messageId": f"local:{len(self.sent)}"}
 
