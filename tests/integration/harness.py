@@ -57,12 +57,13 @@ class CedarGate:
 
 
 class Composition:
-    def __init__(self, permits: dict[str, str] | None = None) -> None:
+    def __init__(self, permits: dict[str, str] | None = None, messenger: Any = None) -> None:
         self.store = load_demo_store(ROOT)
-        intel = MerchantIntel(InMemoryProfileStore())
-        intel.load_profiles(json.loads((ROOT / "fixtures/merchants/demo-profiles.json").read_text(encoding="utf-8")))
+        self.intel = MerchantIntel(InMemoryProfileStore())
+        self.intel.load_profiles(json.loads((ROOT / "fixtures/merchants/demo-profiles.json").read_text(encoding="utf-8")))
         self.reports, self.sent = MemoryReportStore(), []
-        self.adapter = ToolAdapter(self.store, intel, self.reports, lambda r: self.sent.append(r) or {"messageId": f"local:{len(self.sent)}"})
+        deliver = messenger or (lambda r: self.sent.append(r) or {"messageId": f"local:{len(self.sent)}"})
+        self.adapter = ToolAdapter(self.store, self.intel, self.reports, deliver)
         self.gateway = CedarGate(self.adapter, permits)
         self.agent = Orchestrator(model=HeuristicModel(), gateway=self.gateway, memory=InMemoryMemory(), research=StubResearch(), config=Config())
 

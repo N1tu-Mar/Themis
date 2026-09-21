@@ -27,7 +27,11 @@ class LambdaMessenger:
         out = self.client.invoke(FunctionName=self.function_name, InvocationType="RequestResponse",
                                  Payload=json.dumps(request).encode())
         body = json.loads(out["Payload"].read() or b"{}")
-        if out.get("FunctionError") or not body.get("messageId"):
+        if out.get("FunctionError"):
+            raise RuntimeError(f"messaging invoke failed: {body.get('errorMessage', 'no messageId')}")
+        if body.get("status") == "FAILED":
+            return body
+        if not body.get("messageId"):
             raise RuntimeError(f"messaging invoke failed: {body.get('errorMessage', 'no messageId')}")
         return body
 
@@ -35,18 +39,14 @@ class LambdaMessenger:
 def _build():
     import boto3
     from bank_tools.dynamo_store import DynamoBankToolsStore, Tables
-    from dynamo_profile_store import DynamoProfileStore
-    from merchant_intel import MerchantIntel
+    from merchant_intel import intel_from_env
     from orchestrator.workflow import S3ReportStore
     from router import ToolAdapter
 
     here = Path(__file__).parent
     dynamo = boto3.client("dynamodb")
-    profile_store = DynamoProfileStore(dynamo, os.environ["MERCHANT_PROFILE_TABLE"])
-    intel = MerchantIntel(profile_store)
-    for profile in json.loads((here / "merchant-profiles.json").read_text(encoding="utf-8")):
-        if profile_store.get(profile["merchantId"]) is None:
-            intel.load_profiles([profile])
+    intel = intel_from_env(client=dynamo)
+    intel.load_profiles(json.loads((here / "merchant-profiles.json").read_text(encoding="utf-8")))
     return ToolAdapter(
         DynamoBankToolsStore(dynamo, Tables.from_env()), intel,
         S3ReportStore(boto3.client("s3"), os.environ["ARTIFACTS_BUCKET"]),

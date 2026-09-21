@@ -158,7 +158,7 @@ npm ci
 npm run check          # build + test all workspaces, Python suites, and the local end-to-end composition test
 ```
 
-`npm run check` runs `tests/integration`: an inbound SNS event goes through the messaging runtime to the Python orchestrator, the composed tools adapter (bank-tools + merchant-intel + case workflow) behind the real Cedar policy text, and out to a captured outbound message. No AWS calls. Deploy assets are staged by `scripts/build_assets.py` (run by `npm run build --workspace=infra`); `npm run package:aws --workspace=infra` additionally vendors `boto3` into the AgentCore Runtime asset.
+`npm run check` runs `tests/integration`: an inbound SNS event goes through durable active-menu and delivery state to the Python orchestrator, the composed tools adapter (bank-tools + durable merchant-intel + case workflow) behind the real Cedar policy text, and out to a captured outbound message. The suite covers structured outcomes/escalations, Scenarios B/C/E, SMS suggestion parity, duplicate escalation, and post-completion notification failure without making AWS calls. Deploy assets are staged by `scripts/build_assets.py` (run by `npm run build --workspace=infra`); `npm run package:aws --workspace=infra` additionally vendors `boto3` into the AgentCore Runtime asset.
 
 Build contracts and generate the synthetic demo fixtures:
 

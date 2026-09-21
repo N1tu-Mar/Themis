@@ -110,7 +110,8 @@ def escalate_case(
     existing = [r.reason for r in store.human_review_requests_for_case(case_id)]
     duplicate = code in existing or (code.startswith("POLICY_") and any(e.startswith("POLICY_") for e in existing))
     if not duplicate:
-        refs = [e for e in evidence_refs if e in case.evidenceIds] if evidence_refs else list(case.evidenceIds)
+        refs = ([e for e in evidence_refs if e in case.evidenceIds]
+                if evidence_refs is not None else list(case.evidenceIds))
         store.add_human_review_request(HumanReviewRequest(
             caseId=case_id, reason=code, summary=summary or legacy or reason,
             recommendedNextStep="Review the case evidence and decide the next step.", evidenceRefs=refs))

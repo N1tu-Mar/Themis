@@ -42,7 +42,8 @@ def _reply(agent: Orchestrator, payload: dict, directory: dict[str, str] | None 
         customer = (directory if directory is not None else load_directory()).get(sender)
         if customer is None:
             return {"reply": UNVERIFIED_MSG, "status": "UNVERIFIED", "caseId": None}
-        payload = {"conversationId": sender, "customerId": customer, "message": payload.get("text") or payload.get("postback") or ""}
+        # Messaging resolves active-menu SMS numbers/labels to the same canonical postback used by RCS.
+        payload = {"conversationId": sender, "customerId": customer, "message": payload.get("postback") or payload.get("text") or ""}
     r = agent.handle_turn(str(payload.get("conversationId", "local-1")), str(payload.get("customerId", "customer_demo_001")),
                           str(payload.get("message", "")))
     out = {"reply": r.text, "status": r.status, "caseId": r.case_id}

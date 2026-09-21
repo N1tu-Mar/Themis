@@ -82,8 +82,8 @@ npm exec --workspace=infra -- cdk deploy --all
 
 `package:aws` produces:
 
-- `infra/build/tools-adapter`: `handler.py`, `router.py`, Dynamo profile adapter,
-  `bank_tools`, `merchant_intel`, `orchestrator`, merchant profiles, schemas.
+- `infra/build/tools-adapter`: `handler.py`, `router.py`, `bank_tools`, the canonical
+  `merchant_intel` package (including `DynamoProfileStore`), `orchestrator`, merchant profiles, schemas.
 - `infra/build/agent-runtime`: the same three packages under `src/`, packaged
   schemas and fixtures, Runtime entry point, and vendored `boto3`/`botocore`.
 - `services/messaging/dist/index.mjs`: the bundled Node 22 messaging Lambda.
@@ -125,10 +125,10 @@ are not delivery receipts, so inspect provider/SES delivery telemetry as well.
 
 ## Messaging topic separation and IAM
 
-`InboundTopicArn` and `RcsInboundTopicArn` carry trusted customer messages and
-are the only topics subscribed to `ThemisMessageNormalizer`.
-`DeliveryEventTopicArn` carries ConfigurationSet delivery telemetry and has no
-normalizer subscription. Its resource policy grants only `sns:Publish` to the
+`InboundTopicArn` and `RcsInboundTopicArn` carry trusted customer messages.
+`DeliveryEventTopicArn` carries ConfigurationSet delivery telemetry. All are
+subscribed to `ThemisMessageNormalizer`, which routes them to mutually exclusive
+inbound and delivery-event handlers by trusted topic ARN. Its resource policy grants only `sns:Publish` to the
 AWS End User Messaging SMS service, constrained by account and ConfigurationSet
 ARN. The inbound two-way role can publish only to the SMS inbound topic.
 

@@ -28,14 +28,14 @@ function exportForRef(template, logicalId, attribute) {
 
 test('tools adapter is the staged real asset and can invoke messaging', () => {
   const { agent } = synth();
-  for (const f of ['handler.py', 'router.py', 'dynamo_profile_store.py', 'bank_tools', 'merchant_intel', 'orchestrator', 'merchant-profiles.json', 'schemas.json']) {
+  for (const f of ['handler.py', 'router.py', 'bank_tools', 'merchant_intel', 'orchestrator', 'merchant-profiles.json', 'schemas.json']) {
     assert.ok(existsSync(new URL(`../build/tools-adapter/${f}`, import.meta.url)), f);
   }
   agent.hasResourceProperties('AWS::Lambda::Function', {
     FunctionName: 'ThemisToolsAdapter',
     Environment: { Variables: Match.objectLike({
       THEMIS_MODE: 'aws', MESSAGING_FUNCTION_NAME: 'ThemisMessageNormalizer', IDEMPOTENCY_TABLE: Match.anyValue(),
-      MERCHANTS_TABLE: Match.anyValue(), MERCHANT_PROFILE_TABLE: Match.anyValue(), ARTIFACTS_BUCKET: Match.anyValue(),
+      MERCHANTS_TABLE: Match.anyValue(), ARTIFACTS_BUCKET: Match.anyValue(),
     }) },
   });
   agent.hasResourceProperties('AWS::IAM::Policy', {
@@ -54,7 +54,8 @@ test('staged tool router accepts the same new optional arguments as the Gateway'
   const build = new URL('../build/tools-adapter', import.meta.url);
   const raw = execFileSync('python3', ['-c', [
     'import json, router',
-    's=router.build_specs(None,None,None)',
+    'from bank_tools.dispatch import SPECS',
+    's={**SPECS,**router.build_specs(None,None,None)}',
     'print(json.dumps({n:[p.camel for p in s[n].params] for n in ("update_case","escalate_case")}))',
   ].join(';')], { encoding: 'utf8', env: {
     ...process.env, PYTHONPATH: build.pathname, PYTHONDONTWRITEBYTECODE: '1',
@@ -65,12 +66,11 @@ test('staged tool router accepts the same new optional arguments as the Gateway'
   });
 });
 
-test('Dynamo merchant profile adapter round-trips cache metadata and case state', () => {
+test('staged merchant-intel DynamoProfileStore round-trips cache metadata and case state', () => {
   const build = new URL('../build/tools-adapter', import.meta.url);
   const script = `
 from datetime import UTC, datetime, timedelta
-from dynamo_profile_store import DynamoProfileStore
-from merchant_intel import CacheRecord
+from merchant_intel import CacheRecord, DynamoProfileStore
 
 class FakeDynamo:
     def __init__(self): self.items = {}
@@ -79,12 +79,15 @@ class FakeDynamo:
         return {"Item": self.items[key]} if key in self.items else {}
     def put_item(self, **request):
         self.items[request["Item"]["merchantId"]["S"]] = request["Item"]
-    def scan(self, **request): return {"Items": list(self.items.values())}
+    def scan(self, **request):
+        prefix = request["ExpressionAttributeValues"][":p"]["S"]
+        return {"Items": [item for key, item in self.items.items() if key.startswith(prefix)]}
 
 client = FakeDynamo()
 store = DynamoProfileStore(client, "ThemisMerchants")
 now = datetime(2026, 9, 20, tzinfo=UTC)
-record = CacheRecord({"merchantId": "merchant_1"}, now, now + timedelta(days=7), 3, "research", {"case_1": "OPEN"})
+profile = {"merchantId": "merchant_1", "canonicalName": "Merchant One", "aliases": ["M1"]}
+record = CacheRecord(profile, now, now + timedelta(days=7), 3, "research", {"case_1": "OPEN"})
 store.put(record)
 loaded = store.get("merchant_1")
 assert loaded.profile == record.profile and loaded.version == 3 and loaded.source_summary == "research"
@@ -103,10 +106,11 @@ test('messaging Lambda is the Node bundle with the env the runtime composition r
     FunctionName: 'ThemisMessageNormalizer', Runtime: 'nodejs22.x', Handler: 'index.handler',
     Environment: { Variables: Match.objectLike({
       THEMIS_MODE: 'aws', THEMIS_RCS_TOPIC_ARN: Match.anyValue(), THEMIS_SMS_TOPIC_ARN: Match.anyValue(),
-      THEMIS_RCS_POOL_ID: Match.anyValue(), THEMIS_SES_FROM: Match.anyValue(), AGENT_RUNTIME_ARN: Match.anyValue() }) },
+      THEMIS_DELIVERY_EVENT_TOPIC_ARN: Match.anyValue(), THEMIS_RCS_POOL_ID: Match.anyValue(),
+      THEMIS_SES_FROM: Match.anyValue(), AGENT_RUNTIME_ARN: Match.anyValue() }) },
   });
   messaging.resourceCountIs('AWS::SNS::Topic', 3); // distinct RCS, SMS, and delivery telemetry topics
-  messaging.resourceCountIs('AWS::SNS::Subscription', 2);
+  messaging.resourceCountIs('AWS::SNS::Subscription', 3);
 });
 
 test('runtime, Gateway, Memory, messaging, tables and S3 use the same synthesized references', () => {
@@ -132,8 +136,6 @@ test('runtime, Gateway, Memory, messaging, tables and S3 use the same synthesize
   for (const [name, logicalId] of Object.entries(bindings)) {
     assert.equal(adapterEnv[name]['Fn::ImportValue'], exportForRef(data, logicalId), name);
   }
-  assert.deepEqual(adapterEnv.MERCHANT_PROFILE_TABLE, adapterEnv.MERCHANTS_TABLE);
-
   const [gatewayId] = Object.entries(agentResources).find(([, resource]) =>
     resource.Type === 'AWS::BedrockAgentCore::Gateway');
   const [memoryId] = Object.entries(agentResources).find(([, resource]) =>
@@ -146,6 +148,7 @@ test('runtime, Gateway, Memory, messaging, tables and S3 use the same synthesize
     { 'Fn::GetAtt': [gatewayId, 'GatewayUrl'] });
   assert.deepEqual(runtime.Properties.EnvironmentVariables.MEMORY_ID,
     { 'Fn::GetAtt': [memoryId, 'MemoryId'] });
+  assert.equal(runtime.Properties.EnvironmentVariables.THEMIS_STRUCTURED_TOOLS, 'true');
 
   const messagingResources = messaging.toJSON().Resources;
   const normalizer = Object.values(messagingResources).find((resource) =>
@@ -154,4 +157,5 @@ test('runtime, Gateway, Memory, messaging, tables and S3 use the same synthesize
     exportForRef(agent, runtimeId, 'AgentRuntimeArn'));
   assert.equal(normalizer.Properties.Environment.Variables.IDEMPOTENCY_TABLE['Fn::ImportValue'],
     exportForRef(data, tableIds.ThemisIdempotency));
+  assert.ok(normalizer.Properties.Environment.Variables.THEMIS_DELIVERY_EVENT_TOPIC_ARN);
 });

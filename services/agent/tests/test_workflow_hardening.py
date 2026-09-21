@@ -9,10 +9,9 @@ for p in ("services/bank-tools/src", "services/merchant-intel/src", "infra/lambd
     sys.path.insert(0, str(ROOT / p))
 
 from bank_tools import tools as bank  # noqa: E402
-from bank_tools.dispatch import OUTCOME_SPECS, Spec, _a, _s  # noqa: E402
 from bank_tools.fixtures import load_demo_store  # noqa: E402
 from merchant_intel import InMemoryProfileStore, MerchantIntel  # noqa: E402
-from router import _IDEM, ToolAdapter  # noqa: E402
+from router import ToolAdapter  # noqa: E402
 
 from orchestrator import workflow  # noqa: E402
 from orchestrator.config import Config  # noqa: E402
@@ -32,11 +31,6 @@ class RealGateway:
         intel = MerchantIntel(InMemoryProfileStore())
         intel.load_profiles(json.loads((ROOT / "fixtures/merchants/demo-profiles.json").read_text(encoding="utf-8")))
         self.adapter = ToolAdapter(self.store, intel, workflow.MemoryReportStore(), lambda r: {"messageId": "m"})
-        self.adapter.specs.update(OUTCOME_SPECS)
-        self.adapter.specs["escalate_case"] = Spec(
-            lambda store, case_id, reason, idempotency_key, summary=None, evidence_refs=None:
-                workflow.escalate_case(store, case_id=case_id, reason=reason, summary=summary, evidence_refs=evidence_refs),
-            (_s("caseId", "case_id"), _s("reason", "reason"), _s("summary", "summary", False), _a("evidenceRefs", "evidence_refs"), _IDEM))
         self.before, self.calls = before or {}, []
 
     def call(self, tool, arguments):
@@ -143,12 +137,13 @@ def test_scenario_c_outcome_is_persisted_by_bank_tools():
     assert not any(t.startswith("propose_") for t, _ in gw.calls) and gw.reviews(r.case_id) == []
 
 
-def test_outcome_is_rejected_by_the_published_gateway_schema_until_infra_adds_it():
+def test_outcome_is_accepted_by_the_integrated_gateway_schema():
     gw = RealGateway()
     case_id = open_case(gw)
     plain = ToolAdapter(gw.store, MerchantIntel(InMemoryProfileStore()), workflow.MemoryReportStore(), lambda r: {})
     r = plain.call("update_case", {"caseId": case_id, "status": "RESOLVED", "outcome": "CUSTOMER_RECOGNIZED_MERCHANT", "idempotencyKey": "o"})
-    assert r["error"]["code"] == "VALIDATION_ERROR"
+    assert r["status"] == "ok"
+    assert str(gw.store.get_case(case_id).outcome) == "CUSTOMER_RECOGNIZED_MERCHANT"
 
 
 # -- structured tool fields -----------------------------------------------------------------------

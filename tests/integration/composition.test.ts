@@ -27,17 +27,39 @@ function agentProcess(extraEnv: Record<string, string> = {}) {
 }
 
 function dynamo() {
-  const items = new Map<string, Record<string, unknown>>();
+  type Item = Record<string, { S: string } & Record<string, unknown>>;
+  const items = new Map<string, Item>();
   const key = (v: unknown) => String(((v as Record<string, Record<string, string>>).idempotencyKey).S);
+  const failed = () => Object.assign(new Error('condition'), { name: 'ConditionalCheckFailedException' });
   return {
     async putItem(p: Payload) {
       const k = key(p.Item);
-      if (p.ConditionExpression && items.has(k)) throw Object.assign(new Error('dup'), { name: 'ConditionalCheckFailedException' });
-      items.set(k, p.Item as Record<string, unknown>); return {};
+      if (p.ConditionExpression && items.has(k)) throw failed();
+      items.set(k, structuredClone(p.Item) as Item); return {};
     },
-    async updateItem() { return {}; },
-    async getItem(p: Payload) { return { Item: items.get(key(p.Key)) }; },
-    async deleteItem() { return {}; },
+    async updateItem(p: Payload) {
+      const item = items.get(key(p.Key));
+      const values = p.ExpressionAttributeValues as Record<string, { S: string }>;
+      const names = p.ExpressionAttributeNames as Record<string, string>;
+      const condition = p.ConditionExpression as string;
+      if (!item) throw failed();
+      if (condition.includes('IN') && ![':open0', ':open1', ':open2'].some(v => values[v].S === item.state.S)) throw failed();
+      if (condition.includes(':processing') && item.state.S !== 'PROCESSING') throw failed();
+      for (const assignment of (p.UpdateExpression as string).slice(4).split(', ')) {
+        const [name, value] = assignment.split(' = ');
+        item[names[name]] = values[value] as never;
+      }
+      return {};
+    },
+    async getItem(p: Payload) { return { Item: structuredClone(items.get(key(p.Key))) }; },
+    async deleteItem(p: Payload) {
+      const k = key(p.Key);
+      const item = items.get(k);
+      const values = p.ExpressionAttributeValues as Record<string, { S: string }>;
+      if (!item || item.caseId.S !== values[':caseId'].S || (values[':menuId'] && item.menuId.S !== values[':menuId'].S)) throw failed();
+      items.delete(k);
+      return {};
+    },
   };
 }
 
@@ -97,4 +119,23 @@ test('Cedar denial: policy result -> escalate_case -> report -> outbound handoff
   assert.equal(state.reportHumanReviewEvents, 1);
   const t: string[] = state.tools;
   assert.ok(t.indexOf('propose_provisional_credit') < t.indexOf('escalate_case') && t.indexOf('escalate_case') < t.indexOf('generate_case_report'));
+});
+
+test('AgentCore suggestions and numbered SMS choices take the same postback path', async () => {
+  const agent = agentProcess();
+  const { runtime, outbound, inbound } = compose(agent);
+
+  await runtime.handler(inbound('19.99 from ASTDIGITAL'));
+  assert.match(String(outbound[0].MessageBody), /1 — Yes, those are the ones/);
+  assert.match(String(outbound[0].MessageBody), /2 — Let me choose/);
+
+  await runtime.handler(inbound('1'));
+  assert.match(String(outbound[1].MessageBody), /1 — I recognize it/);
+  assert.match(String(outbound[1].MessageBody), /2 — I don't recognize it/);
+
+  await runtime.handler(inbound('2'));
+  assert.match(String(outbound[2].MessageBody), /Reference: case_/);
+  const caseId = /Reference: (case_\w+)/.exec(String(outbound[2].MessageBody))?.[1];
+  assert.ok(caseId);
+  assert.equal((await agent.ask({ inspect: caseId })).caseStatus, 'RESOLVED');
 });

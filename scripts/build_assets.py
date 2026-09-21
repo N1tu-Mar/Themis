@@ -1,6 +1,6 @@
 """Stage the Python deployment assets under infra/build/ (gitignored). Run by `npm run build` in infra.
 
-tools-adapter/  Gateway Lambda: handler + router + durable profile adapter; bank_tools, merchant_intel,
+tools-adapter/  Gateway Lambda: handler + router; bank_tools, merchant_intel,
                 orchestrator packages; synthetic merchant profiles; and contract schemas.
 agent-runtime/  AgentCore Runtime zip root: all three Python packages under src/ (entry
                 `python3 src/orchestrator/main.py`), customer/profile fixtures, and contract schemas.
@@ -36,7 +36,7 @@ def require(asset: str, root: Path, paths: tuple[str, ...]) -> None:
 
 def main() -> None:
     tools = stage("tools-adapter")
-    for f in ("handler.py", "router.py", "dynamo_profile_store.py"):
+    for f in ("handler.py", "router.py"):
         shutil.copy(ROOT / "infra/lambda/tools-adapter" / f, tools / f)
     for name, source in PACKAGES.items():
         shutil.copytree(source, tools / name, ignore=IGNORE)
@@ -53,7 +53,7 @@ def main() -> None:
         subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--target", str(runtime), "boto3"], check=True)
 
     require("tools-adapter", tools, (
-        "handler.py", "router.py", "dynamo_profile_store.py", "bank_tools/__init__.py",
+        "handler.py", "router.py", "bank_tools/__init__.py",
         "merchant_intel/__init__.py", "orchestrator/__init__.py", "merchant-profiles.json", "schemas.json",
     ))
     require("agent-runtime", runtime, (

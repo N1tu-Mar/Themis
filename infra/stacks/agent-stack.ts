@@ -85,7 +85,6 @@ export class AgentStack extends cdk.Stack {
         TRANSACTIONS_TABLE: data.transactionsTable.tableName,
         CASES_TABLE: data.casesTable.tableName,
         MERCHANTS_TABLE: data.merchantsTable.tableName,
-        MERCHANT_PROFILE_TABLE: data.merchantsTable.tableName,
         AUDIT_TABLE: data.auditTable.tableName,
         IDEMPOTENCY_TABLE: data.idempotencyTable.tableName,
         ARTIFACTS_BUCKET: data.artifactsBucket.bucketName,
@@ -237,6 +236,7 @@ export class AgentStack extends cdk.Stack {
       },
       environmentVariables: {
         THEMIS_MODE: 'aws',
+        THEMIS_STRUCTURED_TOOLS: 'true',
         ENABLE_PROACTIVE_DETECTION: String(config.enableProactiveDetection),
         ENABLE_BROWSER_RESEARCH: String(config.enableBrowserResearch),
         ENABLE_REASONING_ESCALATION: String(config.enableReasoningEscalation),

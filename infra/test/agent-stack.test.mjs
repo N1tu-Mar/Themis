@@ -63,23 +63,16 @@ test('Gateway exposes outcome and structured escalation fields as optional argum
   ]);
 });
 
-test('tools adapter has durable merchant profile env and only its required downstream invoke grant', () => {
+test('tools adapter uses the shared merchant table and only its required downstream invoke grant', () => {
   const t = synth();
   t.hasResourceProperties('AWS::Lambda::Function', {
     FunctionName: 'ThemisToolsAdapter',
     Environment: { Variables: Match.objectLike({
       THEMIS_MODE: 'aws',
       MERCHANTS_TABLE: Match.anyValue(),
-      MERCHANT_PROFILE_TABLE: Match.anyValue(),
       ARTIFACTS_BUCKET: Match.anyValue(),
     }) },
   });
-  const functions = t.findResources('AWS::Lambda::Function');
-  const adapter = Object.values(functions).find((fn) => fn.Properties.FunctionName === 'ThemisToolsAdapter');
-  assert.deepEqual(
-    adapter.Properties.Environment.Variables.MERCHANT_PROFILE_TABLE,
-    adapter.Properties.Environment.Variables.MERCHANTS_TABLE,
-  );
   const policies = t.findResources('AWS::IAM::Policy');
   assert.equal(JSON.stringify(policies).includes('ses:Send'), false, 'adapter must delegate SES to messaging');
 });

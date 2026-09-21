@@ -24,13 +24,17 @@ test('provisions distinct inbound and delivery-event SNS topics (no extra queue 
   t.resourceCountIs('AWS::SQS::Queue', 0);
 });
 
-test('subscribes the normalizer Lambda to the inbound topic', () => {
+test('subscribes the Lambda to distinct inbound and delivery handler topics', () => {
   const t = synth();
-  t.resourceCountIs('AWS::SNS::Subscription', 1);
+  t.resourceCountIs('AWS::SNS::Subscription', 2);
   t.hasResourceProperties('AWS::SNS::Subscription', { Protocol: 'lambda' });
+  t.hasResourceProperties('AWS::Lambda::Function', {
+    FunctionName: 'ThemisMessageNormalizer',
+    Environment: { Variables: Match.objectLike({ THEMIS_DELIVERY_EVENT_TOPIC_ARN: Match.anyValue() }) },
+  });
 });
 
-test('routes ConfigurationSet events only to the delivery topic and never subscribes the normalizer', () => {
+test('routes ConfigurationSet events only to the delivery topic boundary', () => {
   const t = synth({ enableSmsFallback: true });
   const topics = t.findResources('AWS::SNS::Topic');
   const deliveryId = Object.entries(topics).find(([, topic]) =>
@@ -43,8 +47,8 @@ test('routes ConfigurationSet events only to the delivery topic and never subscr
   assert.deepEqual(destination, { Ref: deliveryId });
   assert.notDeepEqual(destination, { Ref: inboundId });
   const subscriptions = t.findResources('AWS::SNS::Subscription');
-  assert.equal(Object.values(subscriptions).some((sub) =>
-    JSON.stringify(sub.Properties.TopicArn).includes(deliveryId)), false);
+  assert.equal(Object.values(subscriptions).filter((sub) =>
+    JSON.stringify(sub.Properties.TopicArn).includes(deliveryId)).length, 1);
   t.hasResourceProperties('AWS::SNS::TopicPolicy', {
     PolicyDocument: Match.objectLike({ Statement: Match.arrayWith([Match.objectLike({
       Action: 'sns:Publish', Principal: { Service: 'sms-voice.amazonaws.com' }, Resource: { Ref: deliveryId },

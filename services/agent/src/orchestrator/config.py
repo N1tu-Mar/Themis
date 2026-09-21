@@ -19,7 +19,7 @@ class Config:
     match_window_days: int = 90
     escalation_confidence: float = 0.7
     browser_research: bool = False
-    structured_tools: bool = False   # send update_case.outcome and escalate_case.summary/evidenceRefs once the Gateway schema has them
+    structured_tools: bool = True   # integrated Gateway supports update_case.outcome and escalation summary/evidenceRefs
     model_id_fast: str = ""
     model_id_reasoning: str = ""
     gateway_url: str = ""
@@ -37,7 +37,7 @@ class Config:
             mode=mode,
             escalation_confidence=conf,
             browser_research=env.get("ENABLE_BROWSER_RESEARCH", "false").lower() == "true",
-            structured_tools=env.get("THEMIS_STRUCTURED_TOOLS", "false").lower() == "true",
+            structured_tools=env.get("THEMIS_STRUCTURED_TOOLS", "true").lower() == "true",
             model_id_fast=env.get("BEDROCK_MODEL_ID_FAST", ""),
             model_id_reasoning=env.get("BEDROCK_MODEL_ID_REASONING", ""),
             gateway_url=env.get("GATEWAY_URL", ""),

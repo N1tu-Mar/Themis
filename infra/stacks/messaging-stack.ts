@@ -20,7 +20,7 @@ export interface MessagingStackProps extends cdk.StackProps {
 /**
  * Inbound customer messaging (prompt.md #30-#33): trusted channel topic(s)
  * subscribe one normalizer Lambda that forwards into the AgentCore Runtime.
- * Delivery telemetry uses a distinct, unsubscribed SNS topic. No SQS queue is
+ * Delivery telemetry uses a distinct SNS topic routed to the delivery-only handler boundary. No SQS queue is
  * needed: SNS -> Lambda retries plus the idempotency table cover inbound retry
  * safety for a hackathon-scale demo.
  *
@@ -41,7 +41,7 @@ export class MessagingStack extends cdk.Stack {
   public readonly inboundTopic: sns.Topic;
   /** Distinct RCS topic when both channels are enabled: plain RCS and SMS payloads cannot be told apart. */
   public readonly rcsInboundTopic: sns.Topic;
-  /** Delivery telemetry only; never carries customer messages and has no normalizer subscription. */
+  /** Delivery telemetry only; never carries customer messages. */
   public readonly deliveryEventTopic: sns.Topic;
   public readonly normalizerFunction: lambda.Function;
   public readonly normalizerLogGroup: logs.LogGroup;
@@ -112,6 +112,7 @@ export class MessagingStack extends cdk.Stack {
         ENABLE_SMS_FALLBACK: String(config.enableSmsFallback),
         ...(config.enableRcs ? { THEMIS_RCS_TOPIC_ARN: this.rcsInboundTopic.topicArn } : {}),
         ...(config.enableSmsFallback ? { THEMIS_SMS_TOPIC_ARN: this.inboundTopic.topicArn } : {}),
+        THEMIS_DELIVERY_EVENT_TOPIC_ARN: this.deliveryEventTopic.topicArn,
         THEMIS_RCS_POOL_ID: config.rcsPoolId,
         THEMIS_SMS_IDENTITY: config.smsIdentity,
         THEMIS_SES_FROM: config.sesFromAddress,
@@ -121,6 +122,7 @@ export class MessagingStack extends cdk.Stack {
     for (const topic of new Set([this.inboundTopic, this.rcsInboundTopic])) {
       topic.addSubscription(new subs.LambdaSubscription(this.normalizerFunction));
     }
+    this.deliveryEventTopic.addSubscription(new subs.LambdaSubscription(this.normalizerFunction));
 
     // Role the service assumes to publish inbound customer messages. It can
     // publish only to enabled inbound topics, never the delivery-event topic.
