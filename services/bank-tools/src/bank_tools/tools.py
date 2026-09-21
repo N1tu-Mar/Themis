@@ -336,9 +336,12 @@ def _finalize_proposal(
     )
     store.add_policy_decision(policy_record)
 
-    if decision.outcome is PolicyOutcome.REQUIRE_HUMAN_REVIEW:
+    reason = f"POLICY_REQUIRES_REVIEW:{action}"
+    if decision.outcome is PolicyOutcome.REQUIRE_HUMAN_REVIEW and not any(
+        r.reason == reason for r in store.human_review_requests_for_case(case.caseId)
+    ):
         store.add_human_review_request(HumanReviewRequest(
-            caseId=case.caseId, reason=f"POLICY_REQUIRES_REVIEW:{action}", summary=decision.rationale,
+            caseId=case.caseId, reason=reason, summary=decision.rationale,
             recommendedNextStep="Review the proposed action and approve or deny it.",
             evidenceRefs=list(case.evidenceIds),
         ))

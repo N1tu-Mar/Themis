@@ -52,3 +52,9 @@ Install: `python3 -m pip install -e services/bank-tools`.
 
 - `python3 -m pytest services/bank-tools/tests -q` -> 108 passed.
 - `uv build services/bank-tools` -> wheel + sdist built.
+
+## Workflow hardening (branch agent/agentcore/workflow-hardening)
+
+- `dispatch.OUTCOME_SPECS`: update_case with optional `outcome` (CUSTOMER_RECOGNIZED_MERCHANT). Kept out of `SPECS` so the TS-contract drift test still passes; move it in when Infra adds the field.
+- `propose_*` no longer queues a duplicate POLICY_REQUIRES_REVIEW request on a repeat call with a new idempotency key.
+- `BankToolsStorage` protocol now lists `human_review_requests_for_case`.

@@ -5,7 +5,7 @@ Gateway tools until it needs the customer again. The model never touches money o
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Callable
 
@@ -22,6 +22,8 @@ ASK_CLAIM = "Do you recognize this merchant, possibly under another name? And di
 CONFIRM_AGAIN = "Please confirm whether these are the charges you mean: confirm all, pick specific ones, or say none."
 ESCALATED_MSG = "Thanks for your patience. I've passed this to a specialist who will review your case and follow up."
 RESOLVED_MSG = "I've recorded your case and prepared a report. Reference: {case_id}."
+CANCELLED_MSG = ("I've opened a dispute for the charges after your cancellation and will ask the merchant to confirm it. "
+                 "Reference: {case_id}. I haven't blocked any future payments; tell me if you want that.")
 RECOGNIZED_MSG = "Glad we could sort that out. I've noted that you recognize this merchant and I haven't opened a dispute."
 
 DENIAL_CLAIMS = ("UNAUTHORIZED_TRANSACTION", "UNRECOGNIZED_MERCHANT", "RECURRING_PAYMENT_NOT_AUTHORIZED")
@@ -39,6 +41,27 @@ class Reply:
     text: str
     status: str
     case_id: str | None = None
+    suggestions: list[dict[str, str]] = field(default_factory=list)   # quick replies: {"label", "postback"}
+
+
+CONFIRM_CHOICES = [
+    {"label": "Yes, those are the ones", "postback": "Yes, confirm all"},
+    {"label": "Let me choose", "postback": "I want to choose specific charges"},
+    {"label": "None of these", "postback": "None of these"},
+]
+CLAIM_CHOICES = [
+    {"label": "I recognize it", "postback": "I recognize this merchant"},
+    {"label": "I don't recognize it", "postback": "I don't recognize this merchant"},
+    {"label": "I canceled it", "postback": "I canceled this subscription"},
+]
+
+
+def suggestions_for(st: CaseState) -> list[dict[str, str]]:
+    if st.status == "AWAITING_TRANSACTION_CONFIRMATION":
+        return [dict(c) for c in CONFIRM_CHOICES]
+    if st.status == "AWAITING_CUSTOMER_INFORMATION" and st.pending == "claim":
+        return [dict(c) for c in CLAIM_CHOICES]
+    return []   # terminal and free-text replies carry no choices
 
 
 def clean_analysis(raw: Any) -> dict[str, Any]:
@@ -81,11 +104,11 @@ class Orchestrator:
         except ToolFailure as exc:
             text = self._on_tool_failure(st, exc)
         self.memory.save(conversation_id, st.to_dict())
-        return Reply(text, st.status, st.case_id)
+        return Reply(text, st.status, st.case_id, suggestions_for(st))
 
     def _turn(self, st: CaseState, message: str) -> str:
         if st.status in ("RESOLVED", "CLOSED"):
-            return RESOLVED_MSG.format(case_id=st.case_id)
+            return self._resolved_text(st)
         if st.status == "NEEDS_HUMAN_REVIEW":
             if st.escalation and not st.escalation.get("delivered"):
                 self._deliver_escalation(st)   # earlier delivery failed; retry (idempotent)
@@ -143,10 +166,17 @@ class Orchestrator:
             else:
                 return ESCALATED_MSG
 
-    def _move(self, st: CaseState, to: str) -> None:
+    def _move(self, st: CaseState, to: str, **fields: Any) -> None:
         st.move(to)
         if st.case_id:   # keep the server-side case status in step (best effort)
-            self._try(st, "update_case", caseId=st.case_id, status=to, idempotencyKey=self._key(st, f"status:{len(st.history)}:{to}"))
+            self._try(st, "update_case", caseId=st.case_id, status=to, **fields,
+                      idempotencyKey=self._key(st, f"status:{len(st.history)}:{to}"))
+
+    def _resolved_text(self, st: CaseState) -> str:
+        if st.outcome == "CUSTOMER_RECOGNIZED_MERCHANT":
+            return RECOGNIZED_MSG
+        base = (CANCELLED_MSG if st.classification == "RECURRING_PAYMENT_AFTER_CANCELLATION" else RESOLVED_MSG).format(case_id=st.case_id)
+        return " ".join([base, *st.followups])
 
     def _ask(self, st: CaseState, pending: str, text: str) -> str:
         if st.status != "AWAITING_CUSTOMER_INFORMATION":
@@ -270,7 +300,8 @@ class Orchestrator:
         st.classification, st.outcome = None, "CUSTOMER_RECOGNIZED_MERCHANT"
         self._ev(st, "CUSTOMER_CLAIMS", "CUSTOMER_RECOGNIZED_MERCHANT",
                  "Customer recognized the merchant after identification; no dispute opened.", "CUSTOMER", "HIGH")
-        self._move(st, "RESOLVED")
+        # outcome rides on the status update: the bank refuses early RESOLVED without it
+        self._move(st, "RESOLVED", **({"outcome": st.outcome} if self.cfg.structured_tools else {}))
         self._report(st)
         return RECOGNIZED_MSG
 
@@ -316,9 +347,13 @@ class Orchestrator:
         cached = bool(profile) and (cases > 0 or risk_count > 0 or bool(profile.get("riskSignals")))
         st.bump("cache_hits" if cached else "cache_misses")
         if cases or risk_count:
+            kinds = sorted({str(x.get("type")) for x in (profile or {}).get("riskSignals", []) if isinstance(x, dict) and x.get("type")})
             self._ev(st, "MERCHANT_HISTORY", "INSTITUTIONAL_MEMORY",
-                     f"Merchant has {cases} prior bank cases and {risk_count} active risk signals.",
+                     f"Cached merchant profile: {cases} prior bank cases and {risk_count} active risk signals"
+                     + (f" ({', '.join(kinds)})" if kinds else "") + "; no new research needed.",
                      "MERCHANT_PROFILE", "HIGH")
+        if cached and not self._verify_customer(st):
+            missing.append("customer_merchant_history")
         for rec in memory:
             self._ev(st, "MERCHANT_HISTORY", "MEMORY_RECORD", rec[:200], "AGENT_MEMORY", "MEDIUM")
 
@@ -349,6 +384,22 @@ class Orchestrator:
             return self._escalate(st, "LOW_CONFIDENCE", f"Confidence {st.confidence} is below {cfg.escalation_confidence}.")
         return self._propose_and_gate(st, confirmed, missing)
 
+    def _verify_customer(self, st: CaseState) -> bool:
+        """Scenario E: a known-pattern merchant, so check this customer's own ledger with it before trusting the pattern."""
+        r = self._try(st, "find_related_transactions", transactionId=st.confirmed_ids[0], limit=20, caseId=st.case_id)
+        if r is None:
+            return False
+        txns = r.get("transactions", [])
+        others = [t for t in txns if t["id"] not in st.confirmed_ids]
+        first = min((t["date"] for t in txns), default="unknown")
+        self._ev(st, "BANK_HISTORY", "CUSTOMER_MERCHANT_VERIFICATION",
+                 f"Customer has {len(txns)} charge(s) from this merchant since {first}; {len(st.confirmed_ids)} in this case, {len(others)} not reported.",
+                 "BANK_LEDGER", "HIGH", [t["id"] for t in txns[:20]])
+        if others:
+            total = sum(t["amount"] for t in others)
+            st.followups.append(f"I also see {len(others)} other charge(s) from this merchant totaling ${total:.2f}; tell me if you want those reviewed too.")
+        return True
+
     def _recall(self, st: CaseState) -> list[str]:
         try:
             return list(self.memory.recall(st.merchant_name or st.hints.get("descriptor") or "", self.cfg.max_memory_records))[: self.cfg.max_memory_records]
@@ -374,6 +425,11 @@ class Orchestrator:
         actions = ["CREATE_DISPUTE"]
         if st.classification == "RECURRING_PAYMENT_NOT_AUTHORIZED":
             actions.append("REVIEW_FUTURE_RECURRING_PAYMENT")
+        if st.classification == "RECURRING_PAYMENT_AFTER_CANCELLATION":   # Scenario B: a merchant billing problem, not card fraud
+            actions.append("REQUEST_MERCHANT_EVIDENCE")
+            missing = [*missing, "merchant_cancellation_confirmation"]
+            self._ev(st, "MISSING_EVIDENCE", "MERCHANT_CANCELLATION_CONFIRMATION",
+                     "Merchant has not confirmed the cancellation; evidence requested.", "THEMIS_AGENT", "LOW")
         if st.claim.get("requested_block"):
             actions.append("BLOCK_RECURRING_MERCHANT")
         if st.classification in ("UNAUTHORIZED_TRANSACTION", "UNRECOGNIZED_MERCHANT"):
@@ -387,6 +443,8 @@ class Orchestrator:
         }
         self._try(st, "update_case", caseId=st.case_id, confidence=st.confidence, requiresHumanReview=False,
                   idempotencyKey=self._key(st, "proposal"))
+        if not self._stored_state_matches(st):   # policy reads the stored case; never trust our own copy of it
+            return self._escalate(st, "CASE_STATE_MISMATCH", "Stored case classification, confidence or transactions differ from the agent's; review needed.")
         self._move(st, "RESOLUTION_PROPOSED")
         self._move(st, "POLICY_REVIEW")
         total = round(sum(t["amount"] for t in confirmed), 2)
@@ -402,7 +460,12 @@ class Orchestrator:
         self._move(st, "ACTION_APPROVED")
         self._move(st, "RESOLVED")
         self._report(st)
-        return RESOLVED_MSG.format(case_id=st.case_id)
+        return self._resolved_text(st)
+
+    def _stored_state_matches(self, st: CaseState) -> bool:
+        c = self._call(st, "get_case", caseId=st.case_id).get("case", {})
+        return (c.get("claimType") == st.classification and c.get("confidence") == st.confidence
+                and set(c.get("transactionIds", [])) == set(st.confirmed_ids))
 
     def _policy_call(self, st: CaseState, action: str, total: float) -> tuple[str, dict[str, Any]] | None:
         return {
@@ -428,8 +491,10 @@ class Orchestrator:
             return   # no server-side case yet; nothing to queue
         e = st.escalation
         text = f"{e['reason']}: {e['summary']}" + (f" [evidence: {', '.join(e['evidenceRefs'])}]" if e["evidenceRefs"] else "")
-        e["delivered"] = self._try(st, "escalate_case", caseId=st.case_id, reason=text[:500],
-                                   idempotencyKey=self._key(st, "escalate")) is not None
+        args = ({"reason": e["reason"], "summary": e["summary"][:500], "evidenceRefs": e["evidenceRefs"]}
+                if self.cfg.structured_tools else {"reason": text[:500]})
+        e["delivered"] = self._try(st, "escalate_case", caseId=st.case_id, **args,
+                                   idempotencyKey=self._key(st, f"escalate:{e['reason']}")) is not None
 
     def _report(self, st: CaseState) -> None:
         self._try(st, "generate_case_report", caseId=st.case_id, idempotencyKey=self._key(st, "report"))

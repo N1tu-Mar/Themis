@@ -45,7 +45,8 @@ def _reply(agent: Orchestrator, payload: dict, directory: dict[str, str] | None 
         payload = {"conversationId": sender, "customerId": customer, "message": payload.get("text") or payload.get("postback") or ""}
     r = agent.handle_turn(str(payload.get("conversationId", "local-1")), str(payload.get("customerId", "customer_demo_001")),
                           str(payload.get("message", "")))
-    return {"reply": r.text, "status": r.status, "caseId": r.case_id}
+    out = {"reply": r.text, "status": r.status, "caseId": r.case_id}
+    return {**out, "suggestions": r.suggestions} if r.suggestions else out
 
 
 def run_local(agent: Orchestrator) -> None:  # also the child-process protocol for tests/integration

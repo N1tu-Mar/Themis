@@ -75,7 +75,7 @@ class Spec:
 
 def _adapt_update_case(store: BankToolsStorage, kw: dict[str, Any]) -> dict[str, Any]:
     patch_fields = {"status": "status", "claim_type": "claimType", "merchant_id": "merchantId",
-                    "confidence": "confidence", "requires_human_review": "requiresHumanReview"}
+                    "confidence": "confidence", "requires_human_review": "requiresHumanReview", "outcome": "outcome"}
     patch = {camel: kw[snake] for snake, camel in patch_fields.items() if snake in kw}
     if not patch:
         raise ToolError("update_case requires at least one field to change", "VALIDATION_ERROR")
@@ -134,6 +134,10 @@ SPECS: dict[str, Spec] = {
         _s("caseId", "case_id"), _n("amount", "amount", True, 0), _n("confidence", "confidence", True, 0, 1),
         _s("claimType", "claim_type"), _IDEM), _adapt_credit),
 }
+
+# update_case with the optional `outcome` (Scenario C: CUSTOMER_RECOGNIZED_MERCHANT). Not in SPECS until Infra adds the
+# field to infra/config/tool-schemas.ts (test_dispatcher_matches_gateway_contract); the tools adapter passes this as `extra`.
+OUTCOME_SPECS: dict[str, Spec] = {"update_case": Spec(tools.update_case, (*SPECS["update_case"].params[:-1], _s("outcome", "outcome", False), _IDEM), _adapt_update_case)}
 
 
 def _error(code: str, message: str, **extra: Any) -> dict[str, Any]:
