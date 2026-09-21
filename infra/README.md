@@ -94,6 +94,53 @@ Runtime asset used by tests.
 
 ## Seed after deploy
 
+### Guarded operations CLI (recommended)
+
+The repository-level operations CLI makes the target explicit and only permits
+the synthetic `demo` stage. Its seed command is an entirely offline dry-run by
+default; it prints row counts and a stable fixture digest without loading AWS
+credentials or making a network request.
+
+```sh
+npm run ops -- seed --account 123456789012 --region us-east-1 --stage demo
+```
+
+After deployment, validate the caller, all five stacks, and their expected
+outputs using read-only API calls:
+
+```sh
+npm run ops -- preflight --account 123456789012 --region us-east-1 --stage demo
+```
+
+Writing fixtures requires both `--apply` and an exact target confirmation. The
+command verifies the live caller account and checks that every table is ACTIVE
+with the expected name and an ARN in that account and region before writing.
+
+```sh
+npm run ops -- seed --account 123456789012 --region us-east-1 --stage demo \
+  --apply --confirm 123456789012:us-east-1:demo
+```
+
+Then run the read-only deployed smoke. It checks seeded fixture rows, Lambda
+state, SNS topic ownership, the artifacts bucket region, and AgentCore
+CloudFormation resources. It deliberately does not invoke the runtime or send
+SNS, SMS, RCS, or email traffic.
+
+```sh
+npm run ops -- smoke --account 123456789012 --region us-east-1 --stage demo
+```
+
+Cleanup is never automated by this CLI. This target-validated command prints a
+pre-destroy checklist, the manual CDK command, and a post-destroy checklist:
+
+```sh
+npm run ops -- cleanup-plan --account 123456789012 --region us-east-1 --stage demo
+```
+
+The environment-only `npm run preflight --workspace=infra` remains required
+before deployment; the operations preflight complements it by inspecting the
+already-deployed account and resources.
+
 Load stack outputs and seed only the committed synthetic demo fixtures:
 
 ```sh

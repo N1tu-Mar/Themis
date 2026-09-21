@@ -16,7 +16,9 @@ REQUIRED_OUTPUTS = {
         "TransactionsTableName", "CasesTableName", "MerchantsTableName", "AuditTableName",
         "IdempotencyTableName", "ArtifactsBucketName",
     ),
-    "ThemisAgent": ("GatewayIdentifier", "GatewayUrl", "MemoryId", "AgentRuntimeArn", "PolicyEngineId"),
+    "ThemisAgent": (
+        "ToolsAdapterFunctionName", "GatewayIdentifier", "GatewayUrl", "MemoryId", "AgentRuntimeArn", "PolicyEngineId",
+    ),
     "ThemisMessaging": (
         "InboundTopicArn", "RcsInboundTopicArn", "DeliveryEventTopicArn", "NormalizerFunctionName",
     ),
@@ -57,6 +59,10 @@ def parser() -> argparse.ArgumentParser:
     target_arguments(seed)
     seed.add_argument("--apply", action="store_true", help="write fixture rows; default only prints an offline plan")
     seed.add_argument("--confirm", help="must exactly equal ACCOUNT:REGION:STAGE with --apply")
+    smoke = commands.add_parser("smoke", help="run read-only post-deploy resource and seed checks")
+    target_arguments(smoke)
+    cleanup = commands.add_parser("cleanup-plan", help="print target-validated cleanup guidance; never deletes")
+    target_arguments(cleanup)
     return result
 
 
@@ -81,6 +87,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             else:
                 result["note"] = "offline plan only; no AWS calls made"
             print(json.dumps(result, indent=2, sort_keys=True))
+        elif args.command == "smoke":
+            from .smoke import read_only_smoke
+            print(json.dumps(read_only_smoke(aws), indent=2, sort_keys=True))
+        elif args.command == "cleanup-plan":
+            from .smoke import cleanup_plan
+            print(json.dumps(cleanup_plan(aws), indent=2, sort_keys=True))
         return 0
     except OpsError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

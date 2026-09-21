@@ -9,6 +9,7 @@ import pytest
 from scripts.themis_ops.aws import AwsCli, OpsError, Target, require_confirmation
 from scripts.themis_ops.cli import REQUIRED_OUTPUTS, deployed_preflight
 from scripts.themis_ops.seed import DATA_OUTPUTS, apply_seed, build_seed_plan, discover_seed_tables
+from scripts.themis_ops.smoke import cleanup_plan, read_only_smoke
 
 
 class FakeRunner:
@@ -94,3 +95,76 @@ def test_seed_batches_writes_and_retries_unprocessed_items():
     assert apply_seed(aws, small, {"transactions": "ThemisTransactions"}) == 2
     assert len(runner.calls) == 2
     assert all(call[1]["input"] for call in runner.calls)
+
+
+def test_cleanup_is_a_read_only_plan_with_no_automatic_destroy():
+    responses = [{"json": {"Account": "123456789012", "Arn": "arn:test"}}]
+    responses.extend({"json": stack_response(name)} for name in ("ThemisData", "ThemisAgent", "ThemisMessaging", "ThemisObservability", "ThemisWeb"))
+    runner = FakeRunner(responses)
+    aws = AwsCli(Target("123456789012", "us-east-1", "demo"), runner=runner)
+    plan = cleanup_plan(aws)
+    assert plan["executed"] is False
+    assert "cdk destroy --all" in plan["manualCommand"]
+    assert all(command[1] in ("sts", "cloudformation") for command, _ in runner.calls)
+
+
+def test_post_deploy_smoke_is_read_only_and_checks_seeded_resources():
+    class StubAws:
+        target = Target("123456789012", "us-east-1", "demo")
+
+        def __init__(self):
+            self.calls = []
+
+        def verify_identity(self):
+            self.calls.append(("sts", "get-caller-identity"))
+            return {"Account": self.target.account, "Arn": "arn:test"}
+
+        def outputs(self, name):
+            values = {key: f"value-{key}" for key in REQUIRED_OUTPUTS.get(name, ())}
+            if name == "ThemisData":
+                values.update(TransactionsTableName="ThemisTransactions", CasesTableName="ThemisCases",
+                              MerchantsTableName="ThemisMerchants", ArtifactsBucketName="themis-artifacts-test")
+            if name == "ThemisAgent":
+                values["ToolsAdapterFunctionName"] = "ThemisToolsAdapter"
+            if name == "ThemisMessaging":
+                values.update(
+                    NormalizerFunctionName="ThemisMessageNormalizer",
+                    InboundTopicArn="arn:aws:sns:us-east-1:123456789012:inbound",
+                    RcsInboundTopicArn="arn:aws:sns:us-east-1:123456789012:rcs",
+                    DeliveryEventTopicArn="arn:aws:sns:us-east-1:123456789012:delivery",
+                )
+            return values
+
+        def stack(self, name):
+            self.calls.append(("cloudformation", "describe-stacks"))
+            return {"StackStatus": "CREATE_COMPLETE", "Outputs": [
+                {"OutputKey": key, "OutputValue": value} for key, value in self.outputs(name).items()
+            ]}
+
+        def json(self, *args, input_json=None):
+            self.calls.append((args[0], args[1]))
+            if args[:2] == ("dynamodb", "describe-table"):
+                table = args[args.index("--table-name") + 1]
+                return {"Table": {"TableStatus": "ACTIVE", "TableArn": f"arn:aws:dynamodb:us-east-1:123456789012:table/{table}"}}
+            if args[:2] == ("dynamodb", "get-item"):
+                return {"Item": {"fixture": {"BOOL": True}}}
+            if args[:2] == ("s3api", "get-bucket-location"):
+                return {"LocationConstraint": None}
+            if args[:2] == ("lambda", "get-function-configuration"):
+                return {"State": "Active", "LastUpdateStatus": "Successful"}
+            if args[:2] == ("sns", "get-topic-attributes"):
+                arn = args[args.index("--topic-arn") + 1]
+                return {"Attributes": {"TopicArn": arn}}
+            if args[:2] == ("cloudformation", "list-stack-resources"):
+                return {"StackResourceSummaries": [
+                    {"ResourceType": f"AWS::BedrockAgentCore::Type{i}", "ResourceStatus": "CREATE_COMPLETE"}
+                    for i in range(5)
+                ]}
+            return {}
+
+    aws = StubAws()
+    result = read_only_smoke(aws)
+    assert result["ok"] is True
+    assert result["checks"]["topics"] == 3
+    assert not any(service in ("bedrock-agentcore", "lambda-invoke") or operation == "publish"
+                   for service, operation in aws.calls)
