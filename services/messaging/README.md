@@ -58,6 +58,34 @@ worker intentionally does not edit that integration-owned file.
 
 Dynamo idempotency uses atomic conditional claims. Claims do not expire or automatically release after failure: partial downstream effects must not execute twice. A runtime failure is surfaced from the Lambda while its `PROCESSING` claim remains; an SNS retry is admitted as a duplicate and cannot invoke AgentCore again. Failed claims need operator reconciliation. This is at-most-once admission, not an exactly-once transaction across systems.
 
+## Claim reconciler (scheduled Lambda `reconciler.handler`, bundle `dist/reconciler.mjs`)
+
+Closes failures between claim acquisition and a durable delivery record (Lambda death/timeout, AgentCore timeout, Dynamo error before `reply:<messageId>` is recorded, send failures outliving SNS redelivery). It **never invokes AgentCore and never deletes a claim**. Claims carry `customerExternalId/messageId/channel` and a sparse `claimState` attribute indexed by `ClaimStateIndex` (`claimState`,`claimedAt`, KEYS_ONLY), so the reconciler Queries instead of Scanning.
+
+| Claim state | Meaning |
+|---|---|
+| `PROCESSING` | admitted; only this state is reconciled |
+| `COMPLETED` | reply settled (by the normal path or by resuming its recorded delivery) |
+| `REVIEW` | customer got the deterministic notice, but AgentCore/case effects are unknown — operator verifies the case |
+| `QUARANTINED` | reconciler cannot act (`MISSING_IDENTITY` legacy claim, or `RETRIES_EXHAUSTED`); the customer may be unnotified |
+
+Per stale claim, under a lease (`leaseOwner/leaseUntil`, every transition conditional on `PROCESSING` + owner): recorded reply → resume its send (`COMPLETED`, or `REVIEW` if the record is the ambiguity notice); no record → send the notice under the normal `reply:<id>` delivery key (put-if-absent, so a customer never gets two answers) → `REVIEW`; transient error → lease held as backoff, attempt counted; attempts > max → `QUARANTINED`. The normal path's `complete` is conditional, so a slow original attempt cannot overwrite a reconciler decision.
+
+Bounds (env, validated): `RECONCILE_STALE_SECONDS` 300 (60–86400; keep ≫ inbound Lambda timeout), `RECONCILE_LEASE_SECONDS` 240, `RECONCILE_BATCH_SIZE` 25 (≤100), `RECONCILE_MAX_ATTEMPTS` 3, `RECONCILE_BUDGET_SECONDS` 40. Also needs `IDEMPOTENCY_TABLE`, `ENABLE_RCS`, `THEMIS_RCS_POOL_ID`, `THEMIS_SMS_IDENTITY`. Logs are EMF JSON (namespace `Themis/Messaging`: Scanned, Completed, Review, Quarantined, Retry, Contended, Deferred, DurationMs) with only a 12-char claim-hash prefix, outcome and reason — no phone numbers, message ids or text.
+
+### Operator runbook for `REVIEW` / `QUARANTINED`
+```
+aws dynamodb query --table-name ThemisIdempotency --index-name ClaimStateIndex \
+  --key-condition-expression 'claimState = :s' --expression-attribute-values '{":s":{"S":"QUARANTINED"}}'
+```
+Inspect the claim (`reason`, `resolvedAt`, identity fields) and the customer's case in the dashboard/audit log. Then close it conditionally so it leaves the index:
+```
+aws dynamodb update-item --table-name ThemisIdempotency --key '{"idempotencyKey":{"S":"<claimId>"}}' \
+  --update-expression 'SET #s = :done REMOVE claimState' --condition-expression '#s = :from' \
+  --expression-attribute-names '{"#s":"state"}' --expression-attribute-values '{":done":{"S":"COMPLETED"},":from":{"S":"QUARANTINED"}}'
+```
+Only if you have verified AgentCore did **not** act may the claim be deleted (which re-admits the message on an SNS redelivery). Ceilings: one index partition per state; legacy claims written before this change have no `claimState` and are never listed (handle by hand); if a slow original Lambda outlives the stale threshold its real reply can lose to the notice.
+
 `caseEmail({case, report, recipient, sender, support, nextSteps})` produces an SES v2 request using structured facts. Case/report identities, transaction membership, currency, totals, and customer ownership are checked. Only `actionsTaken` are presented as completed actions. `nextSteps` must be supplied by deterministic case workflow; the renderer invents none. SES sender identities must be verified; sandbox accounts additionally restrict recipients. Acceptance IDs are not delivery receipts. Infra must configure delivery monitoring/DLQs and SNS subscription permissions. Use the Lambda subscription boundary, not an unauthenticated SNS HTTP endpoint.
 
 Official request references: [inbound SNS](https://docs.aws.amazon.com/sms-voice/latest/userguide/rcs-inbound.html), [suggestion replies](https://docs.aws.amazon.com/sms-voice/latest/userguide/rcs-suggestions.html), [rich RCS fallback](https://docs.aws.amazon.com/sms-voice/latest/userguide/rcs-rich-messaging.html), [conditional Dynamo claims](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html), [SES v2](https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html).
