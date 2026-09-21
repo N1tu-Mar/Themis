@@ -1,15 +1,9 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
 import { Badge, Card, CardHeader } from '@/components/ui';
 import { formatMoney, titleCase } from '@/lib/format';
 import type { ReviewQueueEntry } from '@/lib/data/adapter';
 
-type Decision = 'APPROVED' | 'REJECTED' | 'MORE_EVIDENCE' | null;
-
 export function ReviewCard({ entry }: { entry: ReviewQueueEntry }) {
-  const [decision, setDecision] = useState<Decision>(null);
   const { case: kase, request, report, merchantName } = entry;
   const proposal = report?.resolution;
 
@@ -60,35 +54,19 @@ export function ReviewCard({ entry }: { entry: ReviewQueueEntry }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-line px-5 py-3">
-        {decision ? (
-          <Badge tone={decision === 'APPROVED' ? 'success' : decision === 'REJECTED' ? 'alert' : 'neutral'}>
-            {decision === 'APPROVED' && 'Approved'}
-            {decision === 'REJECTED' && 'Rejected'}
-            {decision === 'MORE_EVIDENCE' && 'More evidence requested'}
-          </Badge>
-        ) : (
-          <>
-            <button
-              onClick={() => setDecision('APPROVED')}
-              className="rounded-sm border border-trust/30 bg-trust-soft px-3 py-1.5 text-xs font-medium text-trust transition-colors hover:bg-trust hover:text-white"
-            >
-              Approve proposed action
-            </button>
-            <button
-              onClick={() => setDecision('REJECTED')}
-              className="rounded-sm border border-alert/30 bg-alert-soft px-3 py-1.5 text-xs font-medium text-alert transition-colors hover:bg-alert hover:text-white"
-            >
-              Reject proposed action
-            </button>
-            <button
-              onClick={() => setDecision('MORE_EVIDENCE')}
-              className="rounded-sm border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink/80 transition-colors hover:bg-paper"
-            >
-              Request more evidence
-            </button>
-          </>
-        )}
+      <div className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
+        {/* Read-only: there is no review-decision API, so these controls never pretend to act. */}
+        {['Approve proposed action', 'Reject proposed action', 'Request more evidence'].map((label) => (
+          <button
+            key={label}
+            disabled
+            title="Read-only: decisions are not recorded from the dashboard"
+            className="cursor-not-allowed rounded-sm border border-line bg-paper px-3 py-1.5 text-xs font-medium text-muted"
+          >
+            {label}
+          </button>
+        ))}
+        <span className="text-xs text-muted">Read-only — decisions are made outside the dashboard.</span>
       </div>
     </Card>
   );

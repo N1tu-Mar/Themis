@@ -1,17 +1,21 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getMerchantProfile, casesForMerchant, recentCaseCount, commonDisputeType } from '@/lib/data/adapter';
+import { dataStatus, getMerchantProfile, casesForMerchant, recentCaseCount, commonDisputeType, referenceTime } from '@/lib/data/adapter';
+import { DataNotice } from '@/components/DataNotice';
 import { Badge, Card, CardHeader, EmptyState, SeverityBadge, StatusBadge } from '@/components/ui';
 import { formatDate, formatMoney, titleCase } from '@/lib/format';
 
+export const dynamic = 'force-dynamic';
+
 export default async function MerchantDetailPage({ params }: { params: Promise<{ merchantId: string }> }) {
   const { merchantId } = await params;
-  const merchant = getMerchantProfile(merchantId);
+  const [merchant, merchantCases, now] = await Promise.all([getMerchantProfile(merchantId), casesForMerchant(merchantId), referenceTime()]);
   if (!merchant) notFound();
+  const status = await dataStatus();
 
-  const cases = [...casesForMerchant(merchantId)].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const dispute = commonDisputeType(merchantId);
-  const recent = recentCaseCount(merchantId);
+  const cases = [...merchantCases].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const dispute = commonDisputeType(cases);
+  const recent = recentCaseCount(cases, now);
 
   return (
     <div className="flex flex-col gap-6">
@@ -20,6 +24,8 @@ export default async function MerchantDetailPage({ params }: { params: Promise<{
         <h1 className="mt-1 text-xl font-semibold text-ink">{merchant.canonicalName}</h1>
         <p className="font-mono text-xs text-muted">{merchant.merchantId}</p>
       </div>
+
+      <DataNotice status={status} />
 
       <Card>
         <CardHeader title="Descriptor aliases" subtitle="Statement descriptors observed for this merchant" />

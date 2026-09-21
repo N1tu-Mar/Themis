@@ -1,7 +1,8 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getCase, getCaseReport, getMerchantProfile, auditEventsForCase } from '@/lib/data/adapter';
+import { dataStatus, getCase, getCaseReport, getMerchantProfile, auditEventsForCase } from '@/lib/data/adapter';
+import { DataNotice } from '@/components/DataNotice';
 import { Badge, Card, CardHeader, EmptyState, SeverityBadge, Stamp, StatusBadge } from '@/components/ui';
 import { formatDate, formatMoney, titleCase } from '@/lib/format';
 import type { Evidence } from '@themis/contracts';
@@ -34,14 +35,39 @@ function EvidenceCard({ item, supporting, contradictory }: { item: Evidence; sup
   );
 }
 
+export const dynamic = 'force-dynamic';
+
 export default async function CaseDetailPage({ params }: { params: Promise<{ caseId: string }> }) {
   const { caseId } = await params;
-  const kase = getCase(caseId);
-  const report = getCaseReport(caseId);
-  if (!kase || !report) notFound();
+  const [kase, report, auditEvents] = await Promise.all([getCase(caseId), getCaseReport(caseId), auditEventsForCase(caseId)]);
+  if (!kase) notFound();
 
-  const merchantProfile = report.merchant ? getMerchantProfile(report.merchant.merchantId) : undefined;
-  const auditEvents = auditEventsForCase(caseId);
+  if (!report) {
+    // A newly processed case can exist before its report artifact is written.
+    const status = await dataStatus();
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <Link href="/cases" className="font-mono text-xs text-muted hover:text-ink">← All cases</Link>
+          <div className="mt-1 flex items-center justify-between">
+            <div>
+              <h1 className="font-mono text-lg font-semibold text-ink">{caseId}</h1>
+              <p className="text-sm text-muted">{titleCase(kase.claimType)} · {formatMoney(kase.totalDisputedAmount, kase.currency)}</p>
+            </div>
+            <StatusBadge status={kase.status} />
+          </div>
+        </div>
+        <DataNotice status={status} />
+        <Card>
+          <CardHeader title="Case report" />
+          <EmptyState label="The case report has not been generated yet. Refresh once the investigation completes." />
+        </Card>
+      </div>
+    );
+  }
+
+  const merchantProfile = report.merchant ? await getMerchantProfile(report.merchant.merchantId) : undefined;
+  const status = await dataStatus();
   const supportingIds = new Set(report.resolution?.supportingEvidence ?? []);
   const contradictoryIds = new Set(report.resolution?.contradictoryEvidence ?? []);
   const stage = stageIndex(kase.status);
@@ -67,6 +93,8 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
           <StatusBadge status={kase.status} />
         </div>
       </div>
+
+      <DataNotice status={status} />
 
       <div className="flex items-center rounded-md border border-line bg-white px-5 py-4">
         {STAGES.map((label, i) => (
