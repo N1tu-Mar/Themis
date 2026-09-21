@@ -14,8 +14,8 @@
     "constructs": "^10.4.2"
   },
   "devDependencies": {
+    "@types/node": "^24.13.6",
     "aws-cdk": "2.1142.0",
-    "typescript": "5.9.2",
-    "@types/node": "22.10.2"
+    "typescript": "5.9.2"
   }
 }
