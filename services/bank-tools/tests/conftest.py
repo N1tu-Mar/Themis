@@ -50,3 +50,12 @@ def seeded_store() -> BankToolsStore:
 @pytest.fixture
 def store() -> BankToolsStore:
     return seeded_store()
+
+
+@pytest.fixture(autouse=True)
+def _reset_lease():
+    """CURRENT_LEASE is a ContextVar; keep one test's lease from leaking into the next."""
+    from bank_tools.store import CURRENT_LEASE
+    token = CURRENT_LEASE.set(None)
+    yield
+    CURRENT_LEASE.reset(token)

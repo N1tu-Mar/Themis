@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from . import tools
-from .errors import ToolError
-from .store import CLAIMED, IN_PROGRESS, MISMATCH, BankToolsStorage
+from .errors import LeaseLostError, ToolError
+from .store import CLAIMED, CURRENT_LEASE, IN_PROGRESS, MISMATCH, BankToolsStorage
 
 # Keep in sync with infra/config/tool-schemas.ts; tests/test_dispatch.py parses that file and fails on drift.
 NOT_OWNED_TOOLS = {
@@ -221,12 +221,19 @@ def dispatch(store: BankToolsStorage, tool_name: str, arguments: Any, extra: dic
         return claim.result  # type: ignore[return-value]
 
     # ponytail: an exception (e.g. store outage) leaves the claim until its lease expires, then a retry re-runs.
-    result = _run(store, spec, kwargs)
-    if result["status"] == "ok":
-        store.remember_result(tool_name, key, result)
-    else:
-        store.release_idempotency(tool_name, key)  # nothing committed; let the caller fix and retry
-    return result
+    # Every store write below is conditional on this claim's owner token; a stale worker gets LeaseLostError.
+    token = CURRENT_LEASE.set((tool_name, key, claim.owner))
+    try:
+        result = _run(store, spec, kwargs)
+        if result["status"] == "ok":
+            store.remember_result(tool_name, key, result)
+        else:
+            store.release_idempotency(tool_name, key)  # nothing committed; let the caller fix and retry
+        return result
+    except LeaseLostError:  # lease expired mid-run and a successor owns the key; do not clobber it
+        return _error("IDEMPOTENCY_IN_PROGRESS", "idempotency lease was taken over by another worker; retry to get its result")
+    finally:
+        CURRENT_LEASE.reset(token)
 
 
 def _run(store: BankToolsStorage, spec: Spec, kwargs: dict[str, Any]) -> dict[str, Any]:

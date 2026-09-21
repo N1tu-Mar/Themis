@@ -34,7 +34,10 @@ Install: `python3 -m pip install -e services/bank-tools`.
   Merchants (`C#`,`M#`,`P#`,`A#` prefixes), Cases (`E#`) and Audit (`audit_`,`policy_`,`review_` sort keys).
 - No cross-item transactions: a crash mid-tool leaves partial writes; the IN_PROGRESS claim expires after its
   lease and a retry re-runs. `replace_case` is last-writer-wins. GSI reads (cases by customer) are eventually consistent.
-- Idempotency rows: pk `<tool>#<key>`, fingerprint, status, result JSON, TTL `expiresAt` (7 days).
+- Idempotency rows: pk `<tool>#<key>`, fingerprint, status, result JSON, TTL `expiresAt` (7 days), `leaseOwner` (uuid per claim).
+- Lease fencing: `IdempotencyClaim.owner`; dispatch sets `CURRENT_LEASE=(tool,key,owner)`; complete/release are conditional on
+  `leaseOwner`, stale worker gets `LeaseLostError` (dispatch -> IDEMPOTENCY_IN_PROGRESS). Rows w/o `leaseOwner` = legacy: live ones block,
+  expired ones are taken over, COMPLETE ones replay. No renew API exists (lease 60s, not extended).
 
 ## KNOWN ISSUES
 
