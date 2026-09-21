@@ -33,7 +33,7 @@ describe('case detail page', () => {
 
 describe('merchant pages', () => {
   it('renders merchant aliases on the list page', async () => {
-    const el = MerchantsPage();
+    const el = await MerchantsPage();
     render(el);
     expect(screen.getByText('Asteria Digital')).toBeInTheDocument();
   });
@@ -48,10 +48,18 @@ describe('merchant pages', () => {
 
 describe('review queue page', () => {
   it('shows the escalated case with its agent proposal', async () => {
-    const el = ReviewPage();
+    const el = await ReviewPage();
     render(el);
     expect(screen.getByText('case_demo_d')).toBeInTheDocument();
     expect(screen.getByText('Agent proposal')).toBeInTheDocument();
+  });
+
+  it('keeps review actions explicitly read-only', async () => {
+    render(await ReviewPage());
+    const buttons = screen.getAllByRole('button', { name: /proposed action|more evidence/i });
+    expect(buttons.length).toBeGreaterThan(0);
+    expect(buttons.every((b) => (b as HTMLButtonElement).disabled)).toBe(true);
+    expect(screen.getAllByText(/read-only/i).length).toBeGreaterThan(0);
   });
 });
 

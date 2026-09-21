@@ -1,10 +1,15 @@
 import Link from 'next/link';
-import { listMerchantProfiles, commonDisputeType, recentCaseCount } from '@/lib/data/adapter';
+import { dataStatus, listCases, listMerchantProfiles, commonDisputeType, recentCaseCount, referenceTime } from '@/lib/data/adapter';
 import { SeverityBadge } from '@/components/ui';
+import { DataNotice } from '@/components/DataNotice';
+
+export const dynamic = 'force-dynamic';
 import { formatDate, titleCase } from '@/lib/format';
 
-export default function MerchantsPage() {
-  const merchants = [...listMerchantProfiles()].sort((a, b) => b.caseStatistics.totalCases - a.caseStatistics.totalCases);
+export default async function MerchantsPage() {
+  const [profiles, cases, now] = await Promise.all([listMerchantProfiles(), listCases(), referenceTime()]);
+  const status = await dataStatus();
+  const merchants = [...profiles].sort((a, b) => b.caseStatistics.totalCases - a.caseStatistics.totalCases);
 
   return (
     <div className="flex flex-col gap-4">
@@ -13,6 +18,8 @@ export default function MerchantsPage() {
         <h1 className="mt-1 text-xl font-semibold text-ink">Merchants</h1>
         <p className="mt-0.5 font-mono text-xs text-muted">{merchants.length} on record</p>
       </div>
+
+      <DataNotice status={status} />
 
       <div className="overflow-hidden rounded-md border border-line bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -29,8 +36,9 @@ export default function MerchantsPage() {
           </thead>
           <tbody className="divide-y divide-line">
             {merchants.map((m) => {
-              const dispute = commonDisputeType(m.merchantId);
-              const recent = recentCaseCount(m.merchantId);
+              const merchantCases = cases.filter((c) => c.merchantId === m.merchantId);
+              const dispute = commonDisputeType(merchantCases);
+              const recent = recentCaseCount(merchantCases, now);
               return (
                 <tr key={m.merchantId} className="transition-colors hover:bg-paper">
                   <td className="px-4 py-2.5">
@@ -58,6 +66,11 @@ export default function MerchantsPage() {
                 </tr>
               );
             })}
+            {merchants.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">No merchant profiles on record yet.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
