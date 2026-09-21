@@ -1,0 +1,103 @@
+"""Safe operational entry point for Themis's synthetic AWS demo."""
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import sys
+from typing import Sequence
+
+from .aws import AwsCli, OpsError, STACKS, Target, require_confirmation, require_outputs
+from .seed import apply_seed, build_seed_plan, discover_seed_tables
+
+
+REQUIRED_OUTPUTS = {
+    "ThemisData": (
+        "TransactionsTableName", "CasesTableName", "MerchantsTableName", "AuditTableName",
+        "IdempotencyTableName", "ArtifactsBucketName",
+    ),
+    "ThemisAgent": (
+        "ToolsAdapterFunctionName", "GatewayIdentifier", "GatewayUrl", "MemoryId", "AgentRuntimeArn", "PolicyEngineId",
+    ),
+    "ThemisMessaging": (
+        "InboundTopicArn", "RcsInboundTopicArn", "DeliveryEventTopicArn", "NormalizerFunctionName",
+    ),
+    "ThemisWeb": ("AmplifyAppId", "AmplifyDefaultDomain"),
+}
+
+
+def target_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--account", required=True, help="exact 12-digit target account")
+    parser.add_argument("--region", required=True, help="exact target region")
+    parser.add_argument("--stage", required=True, help="must be demo")
+
+
+def deployed_preflight(aws: AwsCli) -> dict[str, object]:
+    identity = aws.verify_identity()
+    outputs: dict[str, dict[str, str]] = {}
+    for stack_name in STACKS:
+        stack_outputs = aws.outputs(stack_name)
+        if stack_name in REQUIRED_OUTPUTS:
+            require_outputs(stack_outputs, REQUIRED_OUTPUTS[stack_name], stack_name)
+        outputs[stack_name] = stack_outputs
+    return {
+        "ok": True,
+        "account": aws.target.account,
+        "region": aws.target.region,
+        "stage": aws.target.stage,
+        "callerArn": identity.get("Arn"),
+        "stacks": {name: sorted(values) for name, values in outputs.items()},
+    }
+
+
+def parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(description=__doc__)
+    commands = result.add_subparsers(dest="command", required=True)
+    preflight = commands.add_parser("preflight", help="validate identity, stacks, and outputs (read-only)")
+    target_arguments(preflight)
+    seed = commands.add_parser("seed", help="plan or apply the committed synthetic DynamoDB fixtures")
+    target_arguments(seed)
+    seed.add_argument("--apply", action="store_true", help="write fixture rows; default only prints an offline plan")
+    seed.add_argument("--confirm", help="must exactly equal ACCOUNT:REGION:STAGE with --apply")
+    smoke = commands.add_parser("smoke", help="run read-only post-deploy resource and seed checks")
+    target_arguments(smoke)
+    cleanup = commands.add_parser("cleanup-plan", help="print target-validated cleanup guidance; never deletes")
+    target_arguments(cleanup)
+    return result
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parser().parse_args(argv)
+    try:
+        target = Target(args.account, args.region, args.stage)
+        aws = AwsCli(target)
+        if args.command == "preflight":
+            print(json.dumps(deployed_preflight(aws), indent=2, sort_keys=True))
+        elif args.command == "seed":
+            plan = build_seed_plan(Path(__file__).resolve().parents[2])
+            require_confirmation(target, args.apply, args.confirm)
+            result: dict[str, object] = {
+                "mode": "apply" if args.apply else "dry-run", "target": target.confirmation,
+                "digest": plan.digest, "counts": plan.counts,
+            }
+            if args.apply:
+                aws.verify_identity()
+                tables = discover_seed_tables(aws)
+                result.update({"tables": tables, "written": apply_seed(aws, plan, tables)})
+            else:
+                result["note"] = "offline plan only; no AWS calls made"
+            print(json.dumps(result, indent=2, sort_keys=True))
+        elif args.command == "smoke":
+            from .smoke import read_only_smoke
+            print(json.dumps(read_only_smoke(aws), indent=2, sort_keys=True))
+        elif args.command == "cleanup-plan":
+            from .smoke import cleanup_plan
+            print(json.dumps(cleanup_plan(aws), indent=2, sort_keys=True))
+        return 0
+    except OpsError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
