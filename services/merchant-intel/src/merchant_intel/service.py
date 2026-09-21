@@ -1,13 +1,14 @@
 """Cache-first merchant resolution, profiles and time-aware risk signals."""
 import copy
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
 from .contract import validate
 
 DEFAULT_TTL = timedelta(days=7)
+RETRIES = 3  # optimistic-lock attempts per update
 DEFAULT_SIGNAL_TTL = timedelta(days=90)  # matches committed fixture signals
 SEVERITIES = ["LOW", "ELEVATED", "HIGH"]
 
@@ -46,12 +47,19 @@ class CacheRecord:
     expires_at: datetime
     version: int = 1
     source_summary: str = "internal profile"
-    case_states: dict[str, str] = field(default_factory=dict)  # case_id -> OPEN|RESOLVED(+DISPUTE)
+    case_states: dict[str, str] = field(default_factory=dict)  # case_id -> OPEN|RESOLVED(+DISPUTE); the processed-case ledger
+    rev: int = -1  # storage revision for optimistic locking: -1 = not stored yet; put() must match the stored rev
+
+
+class ConflictError(Exception):
+    """put() lost a race: the stored record changed since it was read."""
 
 
 class ProfileStore(Protocol):
     def get(self, merchant_id: str) -> CacheRecord | None: ...
-    def put(self, record: CacheRecord) -> None: ...
+    def put(self, record: CacheRecord) -> CacheRecord:
+        """Conditional write: record.rev must equal the stored rev (-1 if absent) else ConflictError.
+        Returns the stored record with its bumped rev."""
     def all(self) -> list[CacheRecord]: ...
 
 
@@ -62,8 +70,13 @@ class InMemoryProfileStore:
     def get(self, merchant_id: str) -> CacheRecord | None:
         return self._records.get(merchant_id)
 
-    def put(self, record: CacheRecord) -> None:
-        self._records[record.profile["merchantId"]] = record
+    def put(self, record: CacheRecord) -> CacheRecord:
+        mid = record.profile["merchantId"]
+        cur = self._records.get(mid)
+        if (cur.rev if cur else -1) != record.rev:
+            raise ConflictError(mid)
+        self._records[mid] = stored = replace(record, rev=record.rev + 1)
+        return stored
 
     def all(self) -> list[CacheRecord]:
         return list(self._records.values())
@@ -79,11 +92,15 @@ class MerchantIntel:
 
     # -- persistence -----------------------------------------------------------
     def load_profiles(self, profiles: list[dict[str, Any]]) -> None:
-        """Seed from contract-shaped profiles; researchedAt := updatedAt, so the TTL clock starts there."""
+        """Seed from contract-shaped profiles; researchedAt := updatedAt, so the TTL clock starts there.
+        Already-stored merchants are kept: durable data beats a re-seed."""
         for p in profiles:
             validate("MerchantProfile", p)
             researched = parse(p["updatedAt"])
-            self.store.put(CacheRecord(copy.deepcopy(p), researched, researched + self.ttl))
+            try:
+                self.store.put(CacheRecord(copy.deepcopy(p), researched, researched + self.ttl))
+            except ConflictError:
+                pass
 
     # -- resolution ------------------------------------------------------------
     def resolve(self, descriptor: str) -> dict[str, Any]:
@@ -127,21 +144,26 @@ class MerchantIntel:
             "stale": now >= rec.expires_at}}
 
     def _merge(self, rec: CacheRecord, f: dict[str, Any], now: datetime) -> CacheRecord:
-        p = copy.deepcopy(rec.profile)
-        for a in f.get("aliases", []):
-            if normalize(a) not in {normalize(x) for x in p["aliases"]}:
-                p["aliases"].append(a)
-        for b in f.get("billingPatterns", []):
-            if b not in p["billingPatterns"]:
-                p["billingPatterns"].append(b)
-        for s in f.get("riskSignals", []):
-            self._add_signal(p, s, now)
-        p["updatedAt"] = iso(now)
-        validate("MerchantProfile", p)
-        new = CacheRecord(p, now, now + self.ttl, rec.version + 1, f.get("sourceSummary", "external research"),
-                          rec.case_states)
-        self.store.put(new)
-        return new
+        for _ in range(RETRIES):
+            p = copy.deepcopy(rec.profile)
+            for a in f.get("aliases", []):
+                if normalize(a) not in {normalize(x) for x in p["aliases"]}:
+                    p["aliases"].append(a)
+            for b in f.get("billingPatterns", []):
+                if b not in p["billingPatterns"]:
+                    p["billingPatterns"].append(b)
+            for s in f.get("riskSignals", []):
+                self._add_signal(p, s, now)
+            p["updatedAt"] = iso(now)
+            validate("MerchantProfile", p)
+            try:
+                return self.store.put(CacheRecord(p, now, now + self.ttl, rec.version + 1,
+                                                  f.get("sourceSummary", "external research"), rec.case_states, rec.rev))
+            except ConflictError:
+                rec = self.store.get(p["merchantId"]) or rec
+                if now < rec.expires_at:
+                    return rec  # a concurrent researcher already refreshed it
+        raise ConflictError(rec.profile["merchantId"])
 
     def _add_signal(self, p: dict[str, Any], s: dict[str, Any], now: datetime) -> None:
         if not s.get("evidenceRefs"):
@@ -178,27 +200,33 @@ class MerchantIntel:
         signal: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """status OPEN|RESOLVED. Idempotent per case_id; only touches stats/signals, keeps everything else."""
-        rec = self.store.get(merchant_id)
-        if rec is None:
-            return None
         if status not in ("OPEN", "RESOLVED"):
             raise ValueError("status must be OPEN or RESOLVED")
-        prev = rec.case_states.get(case_id)
         state = "RESOLVED+DISPUTE" if status == "RESOLVED" and dispute_confirmed else status
-        p = copy.deepcopy(rec.profile)
-        cs = p["caseStatistics"]
-        if prev is None:
-            cs["totalCases"] += 1
-            cs["openCases"] += status == "OPEN"
-        elif prev == "OPEN" and status == "RESOLVED":
-            cs["openCases"] = max(0, cs["openCases"] - 1)
-        if state == "RESOLVED+DISPUTE" and prev != state:
-            cs["resolvedCustomerDisputes"] += 1
-        if signal and prev != state:
-            self._add_signal(p, signal, self.clock.now())
-        if prev != state or signal:
+        for _ in range(RETRIES):
+            rec = self.store.get(merchant_id)
+            if rec is None:
+                return None
+            prev = rec.case_states.get(case_id)
+            if prev == state:
+                return copy.deepcopy(rec.profile)  # replay: nothing to write
+            p = copy.deepcopy(rec.profile)
+            cs = p["caseStatistics"]
+            if prev is None:
+                cs["totalCases"] += 1
+                cs["openCases"] += status == "OPEN"
+            elif prev == "OPEN" and status == "RESOLVED":
+                cs["openCases"] = max(0, cs["openCases"] - 1)
+            if state == "RESOLVED+DISPUTE":
+                cs["resolvedCustomerDisputes"] += 1
+            if signal:
+                self._add_signal(p, signal, self.clock.now())
             p["updatedAt"] = iso(self.clock.now())
-        validate("MerchantProfile", p)
-        states = {**rec.case_states, case_id: state}
-        self.store.put(CacheRecord(p, rec.researched_at, rec.expires_at, rec.version, rec.source_summary, states))
-        return p
+            validate("MerchantProfile", p)
+            try:
+                self.store.put(CacheRecord(p, rec.researched_at, rec.expires_at, rec.version, rec.source_summary,
+                                           {**rec.case_states, case_id: state}, rec.rev))
+                return p
+            except ConflictError:
+                continue
+        raise ConflictError(merchant_id)

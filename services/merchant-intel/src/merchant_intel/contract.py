@@ -4,10 +4,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-_HERE = Path(__file__).resolve()
-SCHEMAS = _HERE.parents[1] / "schemas.json"  # deployed layout (scripts/build_lambda_assets.py stages it beside the package)
-if not SCHEMAS.exists():
-    SCHEMAS = _HERE.parents[4] / "packages/contracts/schemas.json"
+SCHEMAS = Path(__file__).with_name("schemas.json")  # packaged copy; tests assert it equals packages/contracts/schemas.json
 
 
 class ContractError(ValueError):
