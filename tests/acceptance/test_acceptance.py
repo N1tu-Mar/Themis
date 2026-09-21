@@ -79,3 +79,16 @@ def test_python_package_matrix_covers_every_service():
         ("merchant-intel", "merchant_intel"),
         ("agent", "orchestrator"),
     )
+
+
+def test_wheel_builds_are_offline_safe(monkeypatch):
+    commands = []
+
+    def fake_command_check(check_id, category, message, command, root):
+        commands.append(command)
+        return acceptance.Result(check_id, category, "PASS", message)
+
+    monkeypatch.setattr(acceptance, "command_check", fake_command_check)
+    acceptance.check_python_wheels(ROOT)
+    assert len(commands) == 3
+    assert all("--no-build-isolation" in command for command in commands)

@@ -37,11 +37,11 @@ def test_second_case_reuses_durable_cache_with_customer_specific_verification():
     assert v1.claim != v2.claim
     for v, customer in ((v1, FIRST), (v2, SECOND)):
         assert v.transactionIds and {w.store.get_transaction(t).customerId for t in v.transactionIds} == {customer}
-    assert "1 charge(s)" in v1.claim and "5 in this case" in v2.claim
+    assert "1 charge(s)" in v1.claim and "6 in this case" in v2.claim
 
     # cases stay separate and reconcile
     assert set(w.store.get_case(first.case_id).transactionIds).isdisjoint(w.store.get_case(second.case_id).transactionIds)
-    assert reconcile_world(w, [first.case_id, second.case_id]) == {"cases": 2, "transactions": 6, "total": 59.94}
+    assert reconcile_world(w, [first.case_id, second.case_id]) == {"cases": 2, "transactions": 7, "total": 69.93}
 
 
 def test_fresh_fixture_profile_needs_no_research_at_all():

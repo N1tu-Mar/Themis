@@ -2,7 +2,7 @@
 // (Bedrock/Runtime) failure, and outbound (End User Messaging) failure. Run: node --test tests/e2e/*.test.ts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMessagingRuntime, type Payload } from '../../services/messaging/src/index.ts';
+import { AMBIGUOUS_RUNTIME_FAILURE_REPLY, createMessagingRuntime, type Payload } from '../../services/messaging/src/index.ts';
 
 const smsTopic = 'arn:aws:sns:us-east-1:123456789012:themis-sms';
 const env = {
@@ -82,14 +82,15 @@ test('distinct messages from one customer are both processed', async () => {
   assert.deepEqual([s.agentCalls, s.outbound.length], [2, 2]);
 });
 
-// Contract (runtime.ts): a failed invoke/send is ambiguous, so the admission claim is kept and the failure surfaces to SNS.
-// Redelivery must never replay the agent turn or double-send; a stuck claim is for the (unwired) reconciler.
-test('agent failure: surfaces to SNS, redelivery never replays the agent turn', async () => {
+// A failed invoke is ambiguous, so the admission claim is kept and one deterministic notice is sent.
+// Redelivery must never replay the agent turn or double-send the notice.
+test('agent failure: sends one safe notice and redelivery never replays the agent turn', async () => {
   const { s, runtime, inbound } = setup();
   s.agentFail = 1;
-  await assert.rejects(runtime.handler(inbound('fail-1')), /fail-1|invoke/i);
+  assert.deepEqual(await runtime.handler(inbound('fail-1')), ['processed']);
   assert.deepEqual(await runtime.handler(inbound('fail-1')), ['duplicate']);
-  assert.deepEqual([s.agentCalls, s.outbound.length], [1, 0]);
+  assert.deepEqual([s.agentCalls, s.outbound.length], [1, 1]);
+  assert.equal(s.outbound[0].MessageBody, AMBIGUOUS_RUNTIME_FAILURE_REPLY);
 });
 
 test('outbound failure: redelivery resends from the delivery record, once, without replaying the agent', async () => {

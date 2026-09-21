@@ -153,8 +153,6 @@ def test_report_failure_after_case_work_keeps_the_case_and_its_evidence():
     assert [str(d.outcome) for d in w.store.policy_decisions_for_case(r.case_id)] == ["ALLOW"]
 
 
-@pytest.mark.xfail(strict=True, reason="defect: a failed generate_case_report is swallowed; customer is told a report was prepared, "
-                   "case is not escalated. See .handoffs/agentcore/2026-09-21-qa-report-failure.md")
 def test_report_failure_is_never_reported_as_success():
     w = world()
     w.gateway.fail("generate_case_report", 99, "raise")
