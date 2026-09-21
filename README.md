@@ -1,179 +1,210 @@
 # Themis
 
-Themis is an AI-orchestrated dispute-resolution system for bank transactions. A customer texts about a charge they don't recognize; Themis handles the entire dispute workflow that would otherwise require a phone call, a web form, and a support queue.
+Themis is an AI-orchestrated bank-transaction dispute system. A customer reports an unfamiliar charge over RCS or SMS; Themis identifies the relevant transactions, resolves the merchant, gathers evidence, classifies the claim, evaluates deterministic policy, records the permitted outcome, and returns an auditable case report.
 
-## The problem
+The repository is a synthetic-data prototype. It does not connect to a bank core, card network, real customer account, or real-money rail.
 
-Today, disputing a transaction looks like this:
+## Why Themis
 
-```text
-customer notices charge
-  -> calls bank
-  -> automated system redirects to website/app
-  -> customer finds transactions manually
-  -> customer fills dispute form
-  -> dispute enters queue
-  -> employee reconstructs situation manually
-  -> additional evidence requested
-  -> customer waits
-```
-
-Themis replaces it with:
+A conventional dispute makes the customer coordinate the process: find transactions, complete forms, repeat context, wait for manual reconstruction, and supply additional evidence. Themis moves that coordination into one governed workflow:
 
 ```text
-customer reports problem
-  -> conversational intake
-  -> affected transactions found automatically
-  -> transaction pattern analyzed
-  -> merchant resolved
-  -> evidence collected
-  -> dispute type classified
-  -> bank policy evaluated
-  -> permitted action executed
-  -> ambiguous case escalated
-  -> report stored
-  -> merchant intelligence updated
-  -> customer notified
+customer message
+  -> normalize and deduplicate
+  -> find affected transactions
+  -> resolve merchant and collect evidence
+  -> classify the dispute
+  -> propose an action
+  -> evaluate deterministic policy
+  -> execute only an allowed action, or escalate
+  -> persist the report and audit trail
+  -> notify the customer
 ```
 
-The customer should not have to orchestrate the dispute. Themis does.
-
-## Core principle
-
-Themis is deliberately **not** "LLM reads transaction, LLM decides fraud, LLM refunds money." The model reasons over evidence and proposes an action; it never has unilateral authority over money or accounts:
+The model does not have unilateral authority over money or accounts:
 
 ```text
-LLM reasons about evidence
-        |
-structured proposed action
-        |
-deterministic policy engine
-        |
-allowed / denied / human approval
-        |
-tool execution
-        |
-auditable result
+model reasoning over evidence
+          |
+structured tool proposal
+          |
+deterministic Cedar + Python policy
+          |
+ALLOW / DENY / REQUIRE_HUMAN_REVIEW
+          |
+idempotent tool execution
+          |
+structured audit event and case report
 ```
 
-Every account-impacting action is gated by a deterministic policy engine, not model judgment, and every decision leaves an audit trail of structured evidence and rationale — never hidden chain-of-thought.
+No hidden chain-of-thought is stored. Reports contain structured evidence, decisions, actions, and customer-facing rationale.
+
+## What is implemented
+
+- A single Python 3.12 AgentCore orchestrator with explicit case-state transitions, conversation memory adapters, safe escalation, and scenarios A–E.
+- One frozen, versioned 20-tool invocation contract shared by the Gateway schema, Python dispatcher, Lambda adapter, tests, and deployment assets.
+- Policy-gated synthetic banking tools backed by in-memory and DynamoDB-shaped stores, with mutation idempotency and audit records.
+- Cache-first merchant intelligence with aliases, risk signals, TTL-aware durable profiles, bounded research interfaces, and cross-process cache reuse.
+- RCS/SMS normalization, active reply menus, duplicate admission control, outbound retry records, delivery-event separation, SES case email, and a safe response for ambiguous AgentCore failures.
+- A Next.js operations dashboard for cases, merchants, reports, and human-review requests. It uses fixtures by default and supports server-side DynamoDB/S3 reads in AWS mode.
+- Five AWS CDK stacks covering data, AgentCore, messaging, observability, and Amplify hosting.
+- Deterministic local end-to-end scenarios, failure injection, demo tooling, guarded AWS preflight/seeding/smoke commands, and a machine-readable release-acceptance gate.
 
 ## Architecture
 
 ```text
-                    CUSTOMER PHONE
-                          |
-                   RCS / SMS
-                          |
-                          v
-             AWS END USER MESSAGING
-                          |
-                 inbound message
-                          |
-                          v
-                    Amazon SNS
-                          |
-                          v
-                  Messaging Lambda
-                          |
-               normalize + dedupe
-                          |
-                          v
-               Bedrock AgentCore
-                Themis Orchestrator
-                          |
-             +------------+-------------+
-             |            |             |
-             v            v             v
-         Memory        Gateway       Browser
-             |            |             |
-             |       tool access    merchant web
-             |            |          research
-             |            v
-             |      Policy Engine
-             |        / Cedar
-             |            |
-             |            v
-             |        AWS Lambda
-             |       banking tools
-             |            |
-             |      +-----+-----+
-             |      v     v     v
-             |    DynamoDB S3   APIs
-             |
-             +------------+-------------
-                          |
-                          v
-                    Case outcome
-                     /        \
-                    v          v
-                 RCS/SMS       SES
-               confirmation   report
+RCS / SMS
+    |
+AWS End User Messaging
+    |
+trusted inbound SNS topics
+    |
+Messaging Lambda  ---- delivery-event SNS topic
+    |                  (separate handler boundary)
+    v
+Bedrock AgentCore Runtime
+    |-- Memory: conversational continuity
+    |-- Gateway: frozen 20-tool surface
+    |-- Policy: deterministic Cedar authorization
+    |
+Tools-adapter Lambda
+    |-- bank-tools
+    |-- merchant-intel
+    |-- case workflow
+    |
+    |-- DynamoDB: transactions, cases, merchants, audit, idempotency
+    |-- S3: reports and evidence artifacts
+    |-- Messaging Lambda: customer messages and SES email
+    v
+Amplify-hosted Next.js dashboard (read-only AWS data access)
 ```
 
-An inbound message is normalized and handed to a single orchestrator agent (not a swarm of agents) running on Bedrock AgentCore. The orchestrator matches transactions, resolves the merchant, gathers evidence, and proposes a resolution. Every proposed action is checked against a deterministic policy engine before any banking tool executes it. Outcomes go back to the customer over RCS/SMS, with a formal case report emailed via SES.
+The AgentCore Runtime does not access DynamoDB or S3 directly. It reaches the data tier through the Gateway and tools-adapter boundary. Account-impacting proposals are evaluated before execution, and ambiguous or disallowed cases are routed to human review.
 
-Themis recognizes dispute types beyond "fraud," including unauthorized transactions, unrecognized merchants, recurring payments not authorized (or continued after cancellation), duplicates, wrong amounts, undelivered service/refund, and cases needing more information.
+See the [architecture explanation](docs/architecture/README.md) and [diagram](docs/architecture/themis.svg).
 
-## Tech stack
-
-| Layer | Choices |
-| --- | --- |
-| Frontend | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, Zod — deployed on AWS Amplify Hosting |
-| Agent/backend | Python 3.12, Amazon Bedrock, Bedrock AgentCore, Strands Agents, Pydantic, Boto3 |
-| Messaging | AWS End User Messaging (RCS + SMS fallback), Amazon SNS, Amazon SES |
-| Data | Amazon DynamoDB (transactions, cases, merchant intelligence, audit), Amazon S3 (reports, evidence) |
-| Policy | Cedar-based deterministic policy engine |
-| Infra | AWS CDK, AWS Lambda, AWS Step Functions (where async workflow needs it), CloudWatch |
-
-All customer, transaction, and merchant data used anywhere in this repo is synthetic. No real bank, card, or account integrations exist, and no real money moves.
-
-## Repository structure
+## Repository layout
 
 ```text
 themis/
-├── apps/dashboard/        # Next.js case + merchant intelligence dashboard
+├── apps/dashboard/          # Next.js operations dashboard
 ├── services/
-│   ├── agent/              # Orchestrator: prompts, state machine, tools
-│   ├── bank-tools/         # Banking action tools gated by policy
-│   ├── merchant-intel/     # Merchant profiles, risk signals, research
-│   └── messaging/          # Inbound/outbound RCS, SMS, email adapters
-├── packages/contracts/     # Shared TypeScript types + JSON Schemas (source of truth)
-├── fixtures/                # Synthetic customers, transactions, merchants, cases
-├── infra/                   # CDK stacks, policies, config
-├── tests/e2e/                # End-to-end scenario tests
-├── scripts/demo/             # Demo data loading / reset
-├── docs/workstreams/         # Per-agent workstream handoffs
-└── prompt.md                  # Full product specification
+│   ├── agent/               # AgentCore orchestrator and workflow
+│   ├── bank-tools/          # Policy-gated banking tools and stores
+│   ├── merchant-intel/      # Merchant resolution, profiles, and cache
+│   └── messaging/           # RCS, SMS, SNS, delivery, and SES runtime
+├── packages/contracts/      # Shared TypeScript contracts and JSON Schemas
+├── fixtures/                # Deterministic synthetic demo data
+├── infra/                   # CDK stacks, Cedar policies, and asset staging
+├── tests/integration/       # Cross-service composition and AWS ops tests
+├── tests/e2e/               # Scenarios A–E and messaging reliability tests
+├── scripts/demo/            # Local demo, seed, reset, and smoke tooling
+├── scripts/themis_ops/      # Guarded deployed-environment operations CLI
+├── docs/                    # Architecture, submission, and workstream docs
+└── prompt.md                # Product specification
 ```
 
-`packages/contracts` is the boundary every workstream builds against: TypeScript consumes `@themis/contracts` directly, Python services validate against the generated `packages/contracts/schemas.json` (JSON Schema 2020-12). See `packages/contracts/README.md` for the case state machine and type conventions.
+`packages/contracts` is the cross-language source of truth. TypeScript imports `@themis/contracts`; Python and deployment assets validate against the generated JSON Schema 2020-12 bundle.
 
-## Getting started
+## Local setup
 
-Requires Node.js 22+ and Python 3.12.
+Requirements:
+
+- Node.js 22+
+- npm
+- Python 3.12 (not 3.13+)
 
 ```sh
 npm ci
-npm run check          # build + test all workspaces, Python suites, and the local end-to-end composition test
+python3.12 -m pip install pytest setuptools wheel
+npm run check
 ```
 
-`npm run check` runs `tests/integration`: an inbound SNS event goes through durable active-menu and delivery state to the Python orchestrator, the composed tools adapter (bank-tools + durable merchant-intel + case workflow) behind the real Cedar policy text, and out to a captured outbound message. The suite covers structured outcomes/escalations, Scenarios B/C/E, SMS suggestion parity, duplicate escalation, and post-completion notification failure without making AWS calls. Deploy assets are staged by `scripts/build_assets.py` (run by `npm run build --workspace=infra`); `npm run package:aws --workspace=infra` additionally vendors `boto3` into the AgentCore Runtime asset.
+`npm run check` builds every workspace and runs:
 
-Build contracts and generate the synthetic demo fixtures:
+- contract and fixture validation;
+- dashboard component, route, and AWS-provider tests;
+- messaging, idempotency, menu, delivery, and email tests;
+- CDK assertions, asset staging, and credential-free synthesis;
+- all Python service, integration, operational, and E2E tests;
+- cross-language SNS-to-AgentCore-to-tools composition tests;
+- the TypeScript messaging-boundary E2E suite.
+
+None of these tests deploys infrastructure, sends messages, or makes paid AWS calls.
+
+## Run the deterministic demo
 
 ```sh
-npm run build --workspace @themis/contracts
-node fixtures/scripts/generate-demo.mjs
-npm test --workspace @themis/contracts
+scripts/demo/demo.sh 0
 ```
 
-Python services create their own virtualenv as needed:
+The demo runs locally against synthetic data and exercises five dispute paths: recurring unauthorized charges, charges after cancellation, a recognized merchant, contradictory authentication requiring human review, and durable merchant-cache reuse.
+
+See [scripts/demo/RUNBOOK.md](scripts/demo/RUNBOOK.md) and the [three-minute judge script](docs/submission/demo-script.md).
+
+## Release acceptance
+
+Run the complete local release gate:
 
 ```sh
-python3.12 -m venv .venv
+npm run acceptance
 ```
 
-## Status
+For CI or automation:
 
-This is a parallel-agent build. All services are integrated on `main` and covered by the local composition test; see `docs/workstreams/integration.md` for the frozen 20-tool ownership map and what still blocks a real AWS deployment. See `CLAUDE.md` for the operating rules that govern how work is split and merged, and `prompt.md` for the full specification.
+```sh
+npm run acceptance:json
+```
+
+The acceptance runner verifies repository deliverables, the frozen tool contract, idempotency storage, environment documentation, the root build/test suite, Python imports and wheel builds, CDK synthesis, and packaged AWS assets. Live-provider requirements are reported as `MANUAL`; they never produce a misleading automated green result.
+
+At the latest verified main commit, the gate reports 13 automated passes, 0 failures, 0 skips, and 5 manual live-AWS gates.
+
+## AWS operations
+
+The operations CLI requires an explicit account, region, and the synthetic `demo` stage. Seeding is offline and dry-run by default.
+
+```sh
+# Inspect the intended deployment target and deployed resources.
+npm run ops -- preflight --account 123456789012 --region us-east-1 --stage demo
+
+# Preview deterministic synthetic fixture seeding without AWS calls.
+npm run ops -- seed --account 123456789012 --region us-east-1 --stage demo
+
+# Read-only checks after an approved deployment and seed.
+npm run ops -- smoke --account 123456789012 --region us-east-1 --stage demo
+
+# Print validated cleanup guidance; this does not delete anything.
+npm run ops -- cleanup-plan --account 123456789012 --region us-east-1 --stage demo
+```
+
+Applying a seed requires both `--apply` and an exact `ACCOUNT:REGION:demo` confirmation. Deployment, real messages, identity registration, and teardown are never performed by the local acceptance gate.
+
+See [infra/README.md](infra/README.md) for packaging and deployment order.
+
+## Current status and manual gates
+
+All code workstreams are integrated on `main`, and the complete local acceptance gate passes. A live AWS deployment has not been claimed or implied.
+
+The remaining environment-specific work is:
+
+1. Deploy the CDK stacks in an approved AWS account and region.
+2. Verify the live AgentCore Runtime, Gateway, Memory, and Cedar request/response shapes.
+3. Register and attach RCS/SMS identities and verify the SES sender.
+4. Connect the Amplify app to the repository through GitHub OAuth and select `main` with app root `apps/dashboard`.
+5. Run an explicitly approved synthetic live-message test and inspect delivery telemetry.
+6. Keep browser research disabled until a bounded source provider is approved and verified.
+
+Before production use, Themis would also need bank-grade customer authentication, immutable audit retention, compliance review, production data governance, disaster recovery, rate limiting, and real banking integrations.
+
+## Documentation
+
+- [Submission guide](docs/submission/README.md)
+- [Definition of done](docs/submission/definition-of-done.md)
+- [Security and financial safety](docs/submission/security-and-financial-safety.md)
+- [Known limitations](docs/submission/known-limitations.md)
+- [AWS deployment checklist](docs/submission/aws-deployment-checklist.md)
+- [Manual provider registration](docs/submission/manual-registration.md)
+- [Integration status](docs/workstreams/integration.md)
+
+All committed customer, transaction, merchant, case, message, and report data is synthetic.
