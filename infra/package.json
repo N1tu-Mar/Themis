@@ -6,7 +6,8 @@
     "build": "npm --prefix ../services/messaging run build && tsc -p tsconfig.json && python3 ../scripts/build_assets.py",
     "synth": "npm run build && cdk synth",
     "test": "npm run build && node --test test/*.test.mjs",
-    "package:aws": "npm run build && python3 ../scripts/build_assets.py --with-boto3"
+    "package:aws": "npm run build && python3 ../scripts/build_assets.py --with-boto3",
+    "preflight": "node dist/bin/preflight.js"
   },
   "dependencies": {
     "aws-cdk-lib": "2.270.0",

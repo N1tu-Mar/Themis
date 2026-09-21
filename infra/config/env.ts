@@ -81,7 +81,8 @@ export function loadConfig(): ThemisConfig {
     bedrockModelIdFast: requireForAwsMode(process.env.BEDROCK_MODEL_ID_FAST, 'BEDROCK_MODEL_ID_FAST'),
     bedrockModelIdReasoning: requireForAwsMode(process.env.BEDROCK_MODEL_ID_REASONING, 'BEDROCK_MODEL_ID_REASONING'),
     sesSenderDomain: process.env.SES_SENDER_DOMAIN ?? 'themis-demo.example',
-    // Manually provisioned messaging identities (see infra/README.md); the messaging Lambda fails fast without them.
+    // The deployed messaging composition constructs all outbound clients at
+    // cold start, so AWS deployments require both channel identities.
     rcsPoolId: requireForAwsMode(process.env.THEMIS_RCS_POOL_ID, 'THEMIS_RCS_POOL_ID'),
     smsIdentity: requireForAwsMode(process.env.THEMIS_SMS_IDENTITY, 'THEMIS_SMS_IDENTITY'),
     sesFromAddress: requireForAwsMode(process.env.THEMIS_SES_FROM, 'THEMIS_SES_FROM'),
@@ -89,4 +90,30 @@ export function loadConfig(): ThemisConfig {
     provisionalCreditAutoApproveLimit,
     creditConfidenceThreshold,
   };
+}
+
+function isUnset(value: string): boolean {
+  return !value || value.startsWith('unset-');
+}
+
+/** Fail-fast validation run immediately before a live CDK deployment. */
+export function validateDeploymentPreflight(config: ThemisConfig): void {
+  const problems: string[] = [];
+  if (config.themisMode !== 'aws') problems.push('THEMIS_MODE must be aws');
+  if (isUnset(config.bedrockModelIdFast)) problems.push('BEDROCK_MODEL_ID_FAST must be set');
+  if (isUnset(config.bedrockModelIdReasoning)) problems.push('BEDROCK_MODEL_ID_REASONING must be set');
+  if (!config.enableRcs && !config.enableSmsFallback) {
+    problems.push('at least one of ENABLE_RCS or ENABLE_SMS_FALLBACK must be true');
+  }
+  if (isUnset(config.rcsPoolId)) problems.push('THEMIS_RCS_POOL_ID must be set');
+  if (isUnset(config.smsIdentity)) problems.push('THEMIS_SMS_IDENTITY must be set');
+  if (isUnset(config.sesFromAddress)) problems.push('THEMIS_SES_FROM must be set');
+  if (!config.sesFromAddress.includes('@')) problems.push('THEMIS_SES_FROM must be an email address');
+  if (!config.sesSenderDomain || config.sesSenderDomain.endsWith('.example')) {
+    problems.push('SES_SENDER_DOMAIN must name the verified SES identity');
+  } else if (!config.sesFromAddress.endsWith(`@${config.sesSenderDomain}`)) {
+    problems.push('THEMIS_SES_FROM must belong to SES_SENDER_DOMAIN');
+  }
+  if (isUnset(config.supportContact)) problems.push('THEMIS_SUPPORT must be set');
+  if (problems.length) throw new Error(`AWS deployment preflight failed:\n- ${problems.join('\n- ')}`);
 }

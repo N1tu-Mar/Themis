@@ -18,12 +18,11 @@ export interface MessagingStackProps extends cdk.StackProps {
 }
 
 /**
- * Inbound customer messaging (prompt.md #30-#33): a single SNS topic is the
- * two-way destination for both channels, subscribed by one normalizer
- * Lambda that forwards into the AgentCore Runtime. No SQS queue in front of
- * it - the CDS instructions call for one only if a real reliability need
- * appears, and SNS -> Lambda retries (plus the idempotency table in
- * DataStack) already cover inbound retry safety for a hackathon-scale demo.
+ * Inbound customer messaging (prompt.md #30-#33): trusted channel topic(s)
+ * subscribe one normalizer Lambda that forwards into the AgentCore Runtime.
+ * Delivery telemetry uses a distinct, unsubscribed SNS topic. No SQS queue is
+ * needed: SNS -> Lambda retries plus the idempotency table cover inbound retry
+ * safety for a hackathon-scale demo.
  *
  * What CDK does NOT provision here, and why:
  * - RCS sender registration (AWS End User Messaging Social) has no
@@ -42,6 +41,8 @@ export class MessagingStack extends cdk.Stack {
   public readonly inboundTopic: sns.Topic;
   /** Distinct RCS topic when both channels are enabled: plain RCS and SMS payloads cannot be told apart. */
   public readonly rcsInboundTopic: sns.Topic;
+  /** Delivery telemetry only; never carries customer messages and has no normalizer subscription. */
+  public readonly deliveryEventTopic: sns.Topic;
   public readonly normalizerFunction: lambda.Function;
   public readonly normalizerLogGroup: logs.LogGroup;
 
@@ -57,6 +58,11 @@ export class MessagingStack extends cdk.Stack {
     this.rcsInboundTopic = config.enableRcs && config.enableSmsFallback
       ? new sns.Topic(this, 'ThemisInboundRcs', { topicName: 'ThemisInboundRcs', displayName: 'Themis inbound RCS messages' })
       : this.inboundTopic;
+
+    this.deliveryEventTopic = new sns.Topic(this, 'ThemisMessagingDeliveryEvents', {
+      topicName: 'ThemisMessagingDeliveryEvents',
+      displayName: 'Themis outbound messaging delivery events',
+    });
 
     const normalizerRole = new iam.Role(this, 'NormalizerRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -116,19 +122,34 @@ export class MessagingStack extends cdk.Stack {
       topic.addSubscription(new subs.LambdaSubscription(this.normalizerFunction));
     }
 
-    // Role the End User Messaging SMS service assumes to publish inbound
-    // two-way messages to the topic above. Attach its ARN as
-    // twoWay.channelRole on the manually-created phone number/pool (see
-    // .handoffs/infra/messaging-manual-steps.md). Service principal name is
-    // this service's best-documented one at time of writing - confirm
-    // against the AWS console if the manual attach step rejects it.
-    if (config.enableSmsFallback) {
+    // Role the service assumes to publish inbound customer messages. It can
+    // publish only to enabled inbound topics, never the delivery-event topic.
+    if (config.enableRcs || config.enableSmsFallback) {
       const smsTwoWayRole = new iam.Role(this, 'SmsTwoWayRole', {
-        assumedBy: new iam.ServicePrincipal('sms-voice.amazonaws.com'),
-        description: 'Assumed by AWS End User Messaging SMS to publish inbound two-way messages',
+        assumedBy: new iam.ServicePrincipal('sms-voice.amazonaws.com', {
+          conditions: { StringEquals: { 'aws:SourceAccount': this.account } },
+        }),
+        description: 'Assumed by AWS End User Messaging to publish inbound customer messages',
       });
-      this.inboundTopic.grantPublish(smsTwoWayRole);
+      for (const topic of new Set([this.inboundTopic, this.rcsInboundTopic])) {
+        topic.grantPublish(smsTwoWayRole);
+      }
+      new cdk.CfnOutput(this, 'SmsTwoWayRoleArn', { value: smsTwoWayRole.roleArn });
+    }
 
+    if (config.enableSmsFallback) {
+      this.deliveryEventTopic.addToResourcePolicy(new iam.PolicyStatement({
+        sid: 'AllowSmsVoiceDeliveryEvents',
+        principals: [new iam.ServicePrincipal('sms-voice.amazonaws.com')],
+        actions: ['sns:Publish'],
+        resources: [this.deliveryEventTopic.topicArn],
+        conditions: {
+          StringEquals: { 'aws:SourceAccount': this.account },
+          ArnLike: {
+            'aws:SourceArn': `arn:aws:sms-voice:${this.region}:${this.account}:configuration-set/ThemisSmsConfigurationSet`,
+          },
+        },
+      }));
       new smsvoice.CfnConfigurationSet(this, 'SmsConfigurationSet', {
         configurationSetName: 'ThemisSmsConfigurationSet',
         eventDestinations: [{
@@ -137,14 +158,15 @@ export class MessagingStack extends cdk.Stack {
           // Verify this matching-event-types value against current
           // AWS::SMSVOICEV2::ConfigurationSet docs before deploy.
           matchingEventTypes: ['ALL'],
-          snsDestination: { topicArn: this.inboundTopic.topicArn },
+          snsDestination: { topicArn: this.deliveryEventTopic.topicArn },
         }],
       });
 
-      new cdk.CfnOutput(this, 'SmsTwoWayRoleArn', { value: smsTwoWayRole.roleArn });
     }
 
     new cdk.CfnOutput(this, 'InboundTopicArn', { value: this.inboundTopic.topicArn });
+    new cdk.CfnOutput(this, 'RcsInboundTopicArn', { value: this.rcsInboundTopic.topicArn });
+    new cdk.CfnOutput(this, 'DeliveryEventTopicArn', { value: this.deliveryEventTopic.topicArn });
     new cdk.CfnOutput(this, 'NormalizerFunctionName', { value: this.normalizerFunction.functionName });
   }
 }

@@ -34,7 +34,7 @@ const arr = (name: string, required = false): ToolParam => ({
 const bool = (name: string, required = false): ToolParam => ({ name, type: 'boolean', required });
 const idem = (): ToolParam => str('idempotencyKey');
 
-export const TOOL_CONTRACT_VERSION = '2026-09-18';
+export const TOOL_CONTRACT_VERSION = '2026-09-20';
 
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   { name: 'search_transactions', description: 'Search a customer\'s transactions with bounded deterministic filters.', params: [str('customerId'), str('merchantId', false), str('descriptorContains', false), str('since', false), str('until', false), num('minAmount', false), num('maxAmount', false), num('limit', false), str('caseId', false)] },
@@ -47,14 +47,14 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   { name: 'get_merchant_risk_signals', description: 'Fetch a merchant\'s active risk signals.', params: [str('merchantId')] },
   { name: 'get_case', description: 'Fetch one case by id.', params: [str('caseId')] },
   { name: 'create_case', description: 'Create a new dispute case for a customer.', params: [str('customerId'), str('claimType'), arr('transactionIds'), str('merchantId', false), str('currency', false), idem()] },
-  { name: 'update_case', description: 'Update mutable fields on an existing case.', params: [str('caseId'), str('status', false), str('claimType', false), str('merchantId', false), num('confidence', false), bool('requiresHumanReview', false), idem()] },
+  { name: 'update_case', description: 'Update mutable fields on an existing case.', params: [str('caseId'), str('status', false), str('claimType', false), str('merchantId', false), num('confidence', false), bool('requiresHumanReview', false), str('outcome', false), idem()] },
   { name: 'save_evidence', description: 'Attach a structured evidence record to a case.', params: [str('caseId'), str('category'), str('type'), str('claim'), str('source'), str('reliability'), arr('transactionIds'), str('evidenceId', false), idem()] },
   { name: 'generate_case_report', description: 'Generate and persist the customer-facing case report.', params: [str('caseId'), idem()] },
   { name: 'propose_payment_block', description: 'Propose blocking future recurring payments to a merchant. Policy-gated.', params: [str('caseId'), bool('customerRequested', true), idem()] },
   { name: 'propose_card_replacement', description: 'Propose replacing the customer\'s card. Always requires human review.', params: [str('caseId'), idem()] },
   { name: 'propose_dispute_creation', description: 'Propose formally disputing confirmed transactions. Policy-gated.', params: [str('caseId'), arr('transactionIds', true), bool('hasConfirmedTransactions', true), idem()] },
   { name: 'propose_provisional_credit', description: 'Propose issuing a provisional credit. Policy-gated on amount, confidence, and classification.', params: [str('caseId'), num('amount', true, 0), num('confidence', true, 0, 1), str('claimType'), idem()] },
-  { name: 'escalate_case', description: 'Escalate a case to human review.', params: [str('caseId'), str('reason'), idem()] },
+  { name: 'escalate_case', description: 'Escalate a case to human review.', params: [str('caseId'), str('reason'), str('summary', false), arr('evidenceRefs'), idem()] },
   { name: 'send_customer_message', description: 'Send an RCS/SMS message to the customer.', params: [str('caseId'), str('channel'), str('text'), idem()] },
   { name: 'send_case_email', description: 'Send a transactional case-summary email via SES.', params: [str('caseId'), str('subject', false), idem()] },
 ];
