@@ -19,6 +19,7 @@ class Config:
     match_window_days: int = 90
     escalation_confidence: float = 0.7
     browser_research: bool = False
+    browser_research_approved: bool = False
     structured_tools: bool = True   # integrated Gateway supports update_case.outcome and escalation summary/evidenceRefs
     model_id_fast: str = ""
     model_id_reasoning: str = ""
@@ -33,10 +34,15 @@ class Config:
         conf = float(env.get("THEMIS_ESCALATION_CONFIDENCE", cls.escalation_confidence))
         if not 0 <= conf <= 1:
             raise ValueError("THEMIS_ESCALATION_CONFIDENCE must be between 0 and 1")
+        requested = env.get("ENABLE_BROWSER_RESEARCH", "false").lower() == "true"
+        approved = env.get("BROWSER_RESEARCH_APPROVED", "false").lower() == "true"
         return cls(
             mode=mode,
             escalation_confidence=conf,
-            browser_research=env.get("ENABLE_BROWSER_RESEARCH", "false").lower() == "true",
+            # Explicit dual control: an accidental feature flag does not turn
+            # on browser I/O. Approval is a deployment/config review record.
+            browser_research=requested and approved,
+            browser_research_approved=approved,
             structured_tools=env.get("THEMIS_STRUCTURED_TOOLS", "true").lower() == "true",
             model_id_fast=env.get("BEDROCK_MODEL_ID_FAST", ""),
             model_id_reasoning=env.get("BEDROCK_MODEL_ID_REASONING", ""),

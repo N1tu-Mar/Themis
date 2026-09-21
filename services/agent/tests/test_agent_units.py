@@ -43,7 +43,8 @@ def test_clean_analysis_drops_untrusted_fields():
 
 
 def test_config_from_env_validates():
-    assert Config.from_env({"THEMIS_MODE": "aws", "ENABLE_BROWSER_RESEARCH": "true"}).browser_research
+    assert not Config.from_env({"THEMIS_MODE": "aws", "ENABLE_BROWSER_RESEARCH": "true"}).browser_research
+    assert Config.from_env({"THEMIS_MODE": "aws", "ENABLE_BROWSER_RESEARCH": "true", "BROWSER_RESEARCH_APPROVED": "true"}).browser_research
     with pytest.raises(ValueError):
         Config.from_env({"THEMIS_MODE": "prod"})
     with pytest.raises(ValueError):
