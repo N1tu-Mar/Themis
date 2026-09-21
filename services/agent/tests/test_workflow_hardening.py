@@ -200,6 +200,35 @@ def test_scenario_e_known_merchant_skips_research_and_verifies_customer_history(
     assert "1 other charge" in r.text   # the unreported $19.99 charge is raised proactively
 
 
+def test_matching_expands_resolved_merchant_aliases_before_confirmation():
+    gw = RealGateway()
+    agent = gw.agent()
+
+    reply = agent.handle_turn("alias", "customer_demo_001", "9.99 from ASTERIA")
+
+    assert reply.status == "AWAITING_TRANSACTION_CONFIRMATION"
+    state = agent.memory.load("alias")
+    assert len(state["candidates"]) == 6
+    assert {t["id"] for t in state["candidates"]} == {f"txn_demo_000{i}" for i in range(1, 7)}
+
+
+def test_report_failure_escalates_before_terminal_success_claim():
+    gw = RealGateway()
+    original = gw.call
+
+    def fail_report(tool, arguments):
+        if tool == "generate_case_report":
+            return {"status": "error", "error": {"code": "UNAVAILABLE", "message": "injected"}}
+        return original(tool, arguments)
+
+    gw.call = fail_report
+    reply = run(gw, "customer_demo_001", "9.99 from ASTERIA", "yes I don't recognize it")
+
+    assert reply.status == "NEEDS_HUMAN_REVIEW"
+    assert "prepared a report" not in reply.text
+    assert len(gw.reviews(reply.case_id)) == 1
+
+
 # -- suggestions ---------------------------------------------------------------------------------------------
 
 def test_suggestions_at_confirmation_claim_question_and_terminal_replies():
