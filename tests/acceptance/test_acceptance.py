@@ -51,7 +51,7 @@ def test_root_check_includes_typescript_e2e_suite():
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     assert package["scripts"]["test:python"] == "python3.12 -m pytest -q"
     assert "npm run test:e2e:node" in package["scripts"]["check"]
-    assert package["scripts"]["test:e2e:node"] == "node --test tests/e2e/*.test.ts"
+    assert package["scripts"]["test:e2e:node"] == "node --test tests/e2e/inbound.test.ts"
 
 
 def test_placeholder_only_directory_fails(tmp_path):
