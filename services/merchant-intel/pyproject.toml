@@ -17,6 +17,9 @@ package-dir = { "" = "src" }
 where = ["src"]
 include = ["merchant_intel*"]
 
+[tool.setuptools.package-data]
+merchant_intel = ["schemas.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
