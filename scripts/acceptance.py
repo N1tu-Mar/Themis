@@ -320,7 +320,7 @@ def check_python_wheels(root: Path) -> list[Result]:
                 f"python.wheel.{service}",
                 "python",
                 f"{service} builds as an installable wheel for {module}.",
-                [sys.executable, "-m", "pip", "wheel", "--no-deps", "--no-build-isolation", "--wheel-dir", wheel_dir, f"services/{service}"],
+                [sys.executable, "-m", "pip", "wheel", "--no-deps", "--wheel-dir", wheel_dir, f"services/{service}"],
                 root,
             ))
     return results

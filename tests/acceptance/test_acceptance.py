@@ -71,3 +71,11 @@ def test_real_file_satisfies_each_critical_directory(tmp_path):
         (directory / "deliverable.md").write_text("done\n", encoding="utf-8")
     result = acceptance.check_critical_directories(tmp_path)
     assert result.status == "PASS"
+
+
+def test_python_package_matrix_covers_every_service():
+    assert acceptance.PYTHON_PACKAGES == (
+        ("bank-tools", "bank_tools"),
+        ("merchant-intel", "merchant_intel"),
+        ("agent", "orchestrator"),
+    )
