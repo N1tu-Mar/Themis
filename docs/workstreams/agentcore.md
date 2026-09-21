@@ -2,7 +2,7 @@
 
 ## STATUS
 
-RUNTIME_SLICE_COMPLETE (branch `agent/agentcore/runtime`; local mocks only, AWS adapters unverified live)
+WORKFLOW_HARDENING_COMPLETE (branch `agent/agentcore/workflow-hardening`; local mocks + real bank-tools path; AWS adapters unverified live)
 
 ## DONE
 
@@ -27,11 +27,19 @@ RUNTIME_SLICE_COMPLETE (branch `agent/agentcore/runtime`; local mocks only, AWS 
 ## KNOWN ISSUES
 
 - AWS adapters never run live (Gateway wire format, tool-name prefix, Memory API calls unverified).
-- No tool to set case `outcome` or to pass summary/evidenceRefs to `escalate_case`; see `.handoffs/agentcore/2026-09-20-runtime-integration-requests.md`.
+- `update_case.outcome` and `escalate_case.summary/evidenceRefs` are sent only when `THEMIS_STRUCTURED_TOOLS=true` (Config.structured_tools, default off) because the Gateway schema lacks them; see `.handoffs/agentcore/2026-09-20-workflow-hardening-infra.md`. While off, Scenario C persists only locally (bank rejects early RESOLVED without outcome).
 - Merchant research adapter not wired (`NoResearch`); uncached merchants escalate on low confidence.
-- Scenario B/E have only partial coverage (cancellation classification tested; proactive verification not implemented).
+- Scenario B ends RESOLVED with dispute + REQUEST_MERCHANT_EVIDENCE (no merchant reply handling yet). Scenario E verification = customer ledger via find_related_transactions + unreported-charge follow-up in the reply text.
+- `customerRequested` on propose_payment_block is still caller-supplied (derived from the model's requested_block); bank has no stored field to validate it against.
 - Status transition table is copied from `packages/contracts` (TS); keep in sync.
 - Reasoning-tier routing only triggers when a later turn starts with confidence < threshold.
+
+## HARDENING (this branch)
+
+- `workflow.escalate_case`: one review per case+reason code; POLICY_* reuses the bank's POLICY_REQUIRES_REVIEW request; audit only on real change; evidenceRefs limited to stored evidence.
+- Orchestrator calls `get_case` before policy and escalates CASE_STATE_MISMATCH if stored claimType/confidence/transactions differ.
+- `Reply.suggestions` [{label, postback}] at transaction confirmation and the claim question; `_reply` adds `suggestions` only when non-empty.
+- bank-tools `dispatch.OUTCOME_SPECS` = update_case + optional `outcome`, passed as `extra` until Infra adds it to SPECS.
 
 ## NEXT 3 TASKS
 
@@ -41,8 +49,7 @@ RUNTIME_SLICE_COMPLETE (branch `agent/agentcore/runtime`; local mocks only, AWS 
 
 ## LAST TEST COMMAND + RESULT
 
-- `cd services/agent && python3 -m pytest -q` -> 31 passed
-- repo root `python3 -m pytest -q` -> 66 passed (agent + bank-tools); `git diff --check` clean
+- `python3 -m pytest -q services/agent services/bank-tools` -> 151 passed; `tests/integration` -> 13 passed; wheels build; `git diff --check` clean
 
 ## LAST CODE COMMIT
 

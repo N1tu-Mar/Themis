@@ -163,6 +163,17 @@ class LocalGateway:
         p = self.profiles.get(merchantId)
         return {"status": "ok", "merchantId": merchantId, "riskSignals": p["riskSignals"], "count": len(p["riskSignals"])} if p else _err("NOT_FOUND")
 
+    def t_find_related_transactions(self, transactionId, limit=20, **_):
+        seed = next((t for t in self.transactions if t["id"] == transactionId), None)
+        if seed is None:
+            return _err("NOT_FOUND")
+        rows = [t for t in self.transactions if t["customerId"] == seed["customerId"] and t["merchantId"] == seed["merchantId"]][:limit]
+        return {"status": "ok", "seedTransactionId": transactionId, "count": len(rows),
+                "transactions": [{k: r[k] for k in ("id", "merchantDescriptor", "amount", "date", "recurring")} for r in rows]}
+
+    def t_get_case(self, caseId, **_):
+        return {"status": "ok", "case": self.cases[caseId]} if caseId in self.cases else _err("NOT_FOUND")
+
     def t_get_customer_dispute_history(self, customerId, limit=20, **_):
         cases = [c for c in self.cases.values() if c["customerId"] == customerId][:limit]
         return {"status": "ok", "cases": cases, "count": len(cases)}

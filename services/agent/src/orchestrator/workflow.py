@@ -89,17 +89,31 @@ def generate_case_report(store: BankToolsStorage, reports: ReportStore, *, case_
             "transactionCount": len(report["transactions"])}
 
 
-def escalate_case(store: BankToolsStorage, *, case_id: str, reason: str) -> dict[str, Any]:
-    """Move the case to NEEDS_HUMAN_REVIEW and queue a review request. `reason` is "CODE: summary [evidence: ids]"."""
+def escalate_case(
+    store: BankToolsStorage, *, case_id: str, reason: str, summary: str | None = None,
+    evidence_refs: list[str] | None = None,
+) -> dict[str, Any]:
+    """Move the case to NEEDS_HUMAN_REVIEW and queue at most one review request per case + reason.
+
+    `reason` is a code, or the legacy "CODE: summary [evidence: ids]" when `summary` is not passed. A POLICY_* code
+    reuses the review a propose_* tool already queued (POLICY_REQUIRES_REVIEW:<action>) instead of adding a second.
+    Evidence refs are limited to evidence actually stored on the case; none given means all of it.
+    """
     case = store.get_case(case_id)
-    if case.status is not CaseStatus.NEEDS_HUMAN_REVIEW:
+    changed = case.status is not CaseStatus.NEEDS_HUMAN_REVIEW
+    if changed:
         r = tools.update_case(store, case_id=case_id, patch={"status": str(CaseStatus.NEEDS_HUMAN_REVIEW), "requiresHumanReview": True},
                               idempotency_key=f"escalate:{case_id}")
         if r["status"] != "ok":
             return r
-    code, _, summary = reason.partition(": ")
-    store.add_human_review_request(HumanReviewRequest(
-        caseId=case_id, reason=code, summary=summary or reason,
-        recommendedNextStep="Review the case evidence and decide the next step.", evidenceRefs=list(case.evidenceIds)))
-    store.record_audit(case_id=case_id, action="ESCALATE_CASE", tool="escalate_case", human_approval_required=True)
-    return {"status": "ok", "caseId": case_id, "queued": True}
+    code, _, legacy = reason.partition(": ")
+    existing = [r.reason for r in store.human_review_requests_for_case(case_id)]
+    duplicate = code in existing or (code.startswith("POLICY_") and any(e.startswith("POLICY_") for e in existing))
+    if not duplicate:
+        refs = [e for e in evidence_refs if e in case.evidenceIds] if evidence_refs else list(case.evidenceIds)
+        store.add_human_review_request(HumanReviewRequest(
+            caseId=case_id, reason=code, summary=summary or legacy or reason,
+            recommendedNextStep="Review the case evidence and decide the next step.", evidenceRefs=refs))
+    if changed or not duplicate:
+        store.record_audit(case_id=case_id, action="ESCALATE_CASE", tool="escalate_case", human_approval_required=True)
+    return {"status": "ok", "caseId": case_id, "queued": True, "duplicate": duplicate}

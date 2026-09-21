@@ -43,6 +43,7 @@ class CaseState:
     policy_results: list[dict[str, Any]] = field(default_factory=list)
     escalation: dict[str, Any] | None = None                 # {"reason","summary","evidenceRefs","delivered"}
     outcome: str | None = None
+    followups: list[str] = field(default_factory=list)      # proactive notes appended to the final reply
     model_turns: int = 0
     match_attempts: int = 0
     research_calls: int = 0
