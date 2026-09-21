@@ -5,6 +5,7 @@ import {
   AMBIGUOUS_RUNTIME_FAILURE_REPLY, CHOICES, DynamoDeliveryStore, MemoryActiveMenuStore, MemoryIdempotencyStore, createMessagingRuntime,
   parseSuggestions, type Payload,
 } from '../src/index.ts';
+import { conditionFailed, fakeDynamo, keyOf, type Item } from './fake-dynamo.ts';
 
 const time = '2026-09-20T14:00:00Z';
 const customer = '+15555550123';
@@ -19,49 +20,6 @@ const env = {
   THEMIS_RCS_POOL_ID: 'pool-1', THEMIS_SMS_IDENTITY: '+15555550999', THEMIS_SES_FROM: 'cases@themis.example', THEMIS_SUPPORT: 'help@themis.example',
 };
 const menuChoices = CHOICES.slice(2, 5);
-
-type Item = Record<string, { S: string } & Record<string, unknown>>;
-const conditionFailed = () => Object.assign(new Error('condition'), { name: 'ConditionalCheckFailedException' });
-const keyOf = (value: unknown) => (value as { idempotencyKey: { S: string } }).idempotencyKey.S;
-
-/** Minimal DynamoDB double: honours the exact conditions the stores emit. */
-function fakeDynamo() {
-  const items = new Map<string, Item>();
-  return {
-    items,
-    client: {
-      async putItem(p: Payload) {
-        const key = keyOf(p.Item);
-        if (p.ConditionExpression && items.has(key)) throw conditionFailed();
-        items.set(key, structuredClone(p.Item) as Item);
-        return {};
-      },
-      async getItem(p: Payload) { return { Item: structuredClone(items.get(keyOf(p.Key))) }; },
-      async updateItem(p: Payload) {
-        const item = items.get(keyOf(p.Key));
-        const values = p.ExpressionAttributeValues as Record<string, { S: string }>;
-        const names = p.ExpressionAttributeNames as Record<string, string>;
-        const condition = p.ConditionExpression as string;
-        if (!item) throw conditionFailed();
-        if (condition.includes('IN') && ![':open0', ':open1', ':open2'].some(v => values[v].S === item.state.S)) throw conditionFailed();
-        if (condition.includes(':processing') && item.state.S !== 'PROCESSING') throw conditionFailed();
-        for (const assignment of (p.UpdateExpression as string).slice(4).split(', ')) {
-          const [name, value] = assignment.split(' = ');
-          item[names[name]] = values[value] as never;
-        }
-        return {};
-      },
-      async deleteItem(p: Payload) {
-        const key = keyOf(p.Key);
-        const item = items.get(key);
-        const values = p.ExpressionAttributeValues as Record<string, { S: string }>;
-        if (!item || item.caseId.S !== values[':caseId'].S || (values[':menuId'] && item.menuId.S !== values[':menuId'].S)) throw conditionFailed();
-        items.delete(key);
-        return {};
-      },
-    },
-  };
-}
 
 function setup(options: { reply?: unknown; failAgent?: () => boolean; failText?: () => boolean; failSes?: () => boolean } = {}) {
   const dynamo = fakeDynamo();
@@ -291,19 +249,6 @@ test('delivery events on inbound topics and inbound messages on the delivery top
 test('delivery topic must be distinct from inbound topics', () => {
   assert.throws(() => createMessagingRuntime({ ...env, THEMIS_DELIVERY_EVENT_TOPIC_ARN: smsTopic }, {
     dynamo: fakeDynamo().client, agentRuntime: { invokeAgentRuntime: async () => undefined } }), /must differ/);
-});
-
-test('reconciler lists only old PROCESSING claims and resolves them conditionally', async () => {
-  const store = new MemoryIdempotencyStore();
-  await store.claim('a'); await store.claim('b'); await store.claim('c');
-  await store.complete('b');
-  const later = new Date(Date.now() + 60_000);
-  assert.deepEqual((await store.listStuck(30_000, later)).map(c => c.claimId).sort(), ['a', 'c']);
-  assert.deepEqual(await store.listStuck(30_000), []);
-  assert.equal(await store.resolve('a', 'COMPLETED'), true);
-  assert.equal(await store.resolve('a', 'RELEASED'), false, 'already moved');
-  assert.equal(await store.resolve('c', 'RELEASED'), true);
-  assert.equal(await store.claim('c'), true, 'released claim can be admitted again');
 });
 
 test('Dynamo delivery store transitions are conditional and final states stick', async () => {

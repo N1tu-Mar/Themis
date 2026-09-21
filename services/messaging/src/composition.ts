@@ -6,6 +6,7 @@ import { createSnsHandler, InboundProcessor, type Channel } from './inbound.ts';
 import { AgentRuntimeConsumer, AgentRuntimeInvocationError, type AgentRuntimeClient } from './runtime.ts';
 import { ChannelAdapter, type MessagingClient } from './outbound.ts';
 import { SesAdapter, type SesClient } from './email.ts';
+import { AMBIGUOUS_RUNTIME_FAILURE_REPLY } from './reconciler.ts';
 import { OutboundMessageSchema } from '../../../packages/contracts/src/index.ts';
 
 export interface RuntimeEnvironment {
@@ -85,8 +86,7 @@ export interface RuntimeDependencies {
   readonly deliveryStore?: DeliveryStore;
 }
 
-export const AMBIGUOUS_RUNTIME_FAILURE_REPLY =
-  "I'm having trouble completing that request. To avoid duplicate account actions, I haven't retried it. Please contact support if you need immediate help.";
+export { AMBIGUOUS_RUNTIME_FAILURE_REPLY } from './reconciler.ts';
 
 type ToolEvent = { readonly themisTool?: unknown; readonly [key: string]: unknown };
 

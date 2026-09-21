@@ -29,6 +29,7 @@ COMPLETE — runtime composition + menu lifecycle + delivery reliability impleme
 - `sendCaseNotification`: SES failure returns `{status:'FAILED'}`, recorded, case untouched.
 - `ClaimReconciler` (interface + memory impl) for stuck PROCESSING claims; `claimedAt` written by Dynamo claims.
 - Infra request: .handoffs/messaging/2026-09-20-delivery-events-infra.md
+- `reconcileClaims`/`createReconciler` (src/reconciler.ts): lease-protected, bounded; claim states PROCESSING→COMPLETED|REVIEW|QUARANTINED; wired in messaging-stack.ts (ThemisClaimReconciler, ClaimStateIndex).
 
 ## CURRENT INTERFACES
 
@@ -45,9 +46,10 @@ COMPLETE — runtime composition + menu lifecycle + delivery reliability impleme
 ## KNOWN ISSUES
 
 - AWS calls are mocked; live resource provisioning/delivery verification is pending.
-- Failed/ambiguous processing keeps claims reserved; reconciliation is required before replay (interface only, no job).
+- Ambiguous processing keeps claims reserved; scheduled reconciler (see README) resumes/notifies/flags REVIEW|QUARANTINED, never replays AgentCore.
 - Concurrent redeliveries of one reply can double-send (no send lock); ponytail ceiling.
 - Crash between recording a reply and persisting its menu is not repaired on resume.
+- Legacy claims (no identity/claimState) are invisible to the reconciler; no alarm on QUARANTINED yet (metric only).
 - At-most-once admission does not guarantee completion across external side effects.
 - Current Infra Lambda is Python and uses one indistinguishable RCS/SMS topic;
   it must consume the TypeScript bundle and provide distinct trusted topic ARNs.
@@ -58,7 +60,7 @@ COMPLETE — runtime composition + menu lifecycle + delivery reliability impleme
 
 1. Integration runs root npm install and commits the root lockfile.
 2. Infra deploys `dist/index.mjs`, distinct topic ARNs, env, permissions, and DLQ.
-3. QA smoke-tests AWS; infra wires delivery topic; optional reconciliation job.
+3. QA smoke-tests AWS incl. reconciler schedule; optional CloudWatch alarm on Quarantined>0.
 
 ## LAST TEST COMMAND + RESULT
 

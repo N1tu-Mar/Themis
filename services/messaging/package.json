@@ -4,7 +4,7 @@
   "type": "module",
   "main": "./dist/index.mjs",
   "scripts": {
-    "build": "npm run typecheck && esbuild src/aws-entry.ts --bundle --platform=node --target=node22 --format=esm --sourcemap --outfile=dist/index.mjs",
+    "build": "npm run typecheck && esbuild src/aws-entry.ts --bundle --platform=node --target=node22 --format=esm --sourcemap --outfile=dist/index.mjs && esbuild src/reconciler-entry.ts --bundle --platform=node --target=node22 --format=esm --sourcemap --outfile=dist/reconciler.mjs",
     "test": "node --test tests/*.test.ts",
     "typecheck": "tsc -p tsconfig.json"
   },

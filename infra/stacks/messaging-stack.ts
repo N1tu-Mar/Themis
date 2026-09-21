@@ -4,6 +4,9 @@ import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as smsvoice from 'aws-cdk-lib/aws-smsvoice';
 import { Construct } from 'constructs';
 import * as path from 'path';
@@ -45,6 +48,7 @@ export class MessagingStack extends cdk.Stack {
   public readonly deliveryEventTopic: sns.Topic;
   public readonly normalizerFunction: lambda.Function;
   public readonly normalizerLogGroup: logs.LogGroup;
+  public readonly reconcilerFunction: lambda.Function;
 
   constructor(scope: Construct, id: string, props: MessagingStackProps) {
     super(scope, id, props);
@@ -124,6 +128,67 @@ export class MessagingStack extends cdk.Stack {
     }
     this.deliveryEventTopic.addSubscription(new subs.LambdaSubscription(this.normalizerFunction));
 
+    // Durable reconciliation of claims stranded after admission (crash/timeout before a reply was delivered). Sparse
+    // KEYS_ONLY index (claimState, claimedAt) lets the reconciler Query open claims instead of Scanning the table. Added here
+    // so the reconciler and its index ship together; DataStack is untouched.
+    const CLAIM_INDEX = 'ClaimStateIndex';
+    data.idempotencyTable.addGlobalSecondaryIndex({
+      indexName: CLAIM_INDEX,
+      partitionKey: { name: 'claimState', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'claimedAt', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.KEYS_ONLY,
+    });
+    // Separate role: no AgentCore (it can never re-run a turn), no SES, no DeleteItem, no Scan, no SNS.
+    const reconcilerRole = new iam.Role(this, 'ReconcilerRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      description: 'Scheduled claim reconciler: resumes recorded replies, sends safe notices, flags claims for review',
+    });
+    reconcilerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
+    reconcilerRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem'],
+      resources: [data.idempotencyTable.tableArn],
+    }));
+    reconcilerRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['dynamodb:Query'],
+      resources: [`${data.idempotencyTable.tableArn}/index/${CLAIM_INDEX}`],
+    }));
+    reconcilerRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['sms-voice:SendTextMessage', 'sms-voice:SendRcsMessage'],
+      resources: [`arn:aws:sms-voice:${this.region}:${this.account}:*`],
+    }));
+    const reconcilerLogGroup = new logs.LogGroup(this, 'ReconcilerLogGroup', {
+      logGroupName: '/aws/lambda/ThemisClaimReconciler',
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+    this.reconcilerFunction = new lambda.Function(this, 'ReconcilerFunction', {
+      functionName: 'ThemisClaimReconciler',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'reconciler.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../services/messaging/dist')),
+      role: reconcilerRole,
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 256,
+      retryAttempts: 0, // the next schedule tick is the retry; leases make overlap safe
+      logGroup: reconcilerLogGroup,
+      environment: {
+        IDEMPOTENCY_TABLE: data.idempotencyTable.tableName,
+        ENABLE_RCS: String(config.enableRcs),
+        THEMIS_RCS_POOL_ID: config.rcsPoolId,
+        THEMIS_SMS_IDENTITY: config.smsIdentity,
+        // Bounds. Stale threshold must stay well above the normalizer timeout (15s) so the original attempt is dead.
+        RECONCILE_STALE_SECONDS: '300',
+        RECONCILE_LEASE_SECONDS: '240',
+        RECONCILE_BATCH_SIZE: '25',
+        RECONCILE_MAX_ATTEMPTS: '3',
+        RECONCILE_BUDGET_SECONDS: '40',
+      },
+    });
+    new events.Rule(this, 'ReconcilerSchedule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+      targets: [new targets.LambdaFunction(this.reconcilerFunction, { retryAttempts: 0 })],
+    });
+
     // Role the service assumes to publish inbound customer messages. It can
     // publish only to enabled inbound topics, never the delivery-event topic.
     if (config.enableRcs || config.enableSmsFallback) {
@@ -169,6 +234,7 @@ export class MessagingStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'InboundTopicArn', { value: this.inboundTopic.topicArn });
     new cdk.CfnOutput(this, 'RcsInboundTopicArn', { value: this.rcsInboundTopic.topicArn });
     new cdk.CfnOutput(this, 'DeliveryEventTopicArn', { value: this.deliveryEventTopic.topicArn });
+    new cdk.CfnOutput(this, 'ReconcilerFunctionName', { value: this.reconcilerFunction.functionName });
     new cdk.CfnOutput(this, 'NormalizerFunctionName', { value: this.normalizerFunction.functionName });
   }
 }

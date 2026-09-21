@@ -5,3 +5,6 @@
 reconciler resolves the `PROCESSING` claim, and `ClaimReconciler` is not wired. Ask: wire the reconciler (or send a retry
 prompt on invoke failure). Verified OK: duplicate/concurrent duplicate inbound, and failed outbound send resent once from the
 delivery record on redelivery without replaying the agent.
+
+## Resolved (agent/messaging/durable-reconciliation)
+Reconciler wired: scheduled `ThemisClaimReconciler` notifies/resumes stuck claims (REVIEW/QUARANTINED for operators); AgentCore is never replayed. See services/messaging/README.md.

@@ -33,36 +33,64 @@ export function normalizeInbound(payload: unknown, channel: Channel, receivedAt:
   return InboundMessageSchema.parse({ channel, customerExternalId: event.originationNumber,
     messageId: event.inboundMessageId, text, postback, receivedAt });
 }
+/** Identity of the inbound message, stored on the claim so a reconciler can act without the (hashed) key. */
+export interface ClaimMeta { readonly customerExternalId: string; readonly messageId: string; readonly channel: Channel }
 export interface IdempotencyStore {
   // Atomically reserve a key. A failed or interrupted processing attempt stays reserved.
-  claim(key: string): Promise<boolean>;
+  claim(key: string, meta?: ClaimMeta): Promise<boolean>;
+  /** Conditional on the claim still being PROCESSING; a claim the reconciler already moved throws ConditionalCheckFailedException. */
   complete(key: string): Promise<void>;
 }
-// Operator/job boundary for claims left PROCESSING by a crash or ambiguous failure. Nothing replays automatically:
-// a claim is either confirmed COMPLETED or RELEASED (deleted so the inbound message may be admitted again).
-export interface StuckClaim { readonly claimId: string; readonly claimedAt: string }
+const isConditionFailure = (error: unknown) => error instanceof Error && error.name === 'ConditionalCheckFailedException';
+export type ClaimState = 'PROCESSING' | 'COMPLETED' | 'REVIEW' | 'QUARANTINED';
+/** Non-PROCESSING outcomes the reconciler may set. REVIEW: customer notified, operator must verify. QUARANTINED: reconciler cannot act. */
+export type ClaimResolution = Exclude<ClaimState, 'PROCESSING'>;
+export interface ClaimRef { readonly claimId: string; readonly claimedAt: string }
+export interface LeasedClaim extends ClaimRef { readonly meta?: ClaimMeta; readonly attempts: number }
+/**
+ * Bounded, lease-protected reconciliation of claims left PROCESSING by a crash or ambiguous failure. Nothing here can
+ * re-admit an inbound message: PROCESSING only ever moves forward, and deleting a claim (which would allow replay) is
+ * an operator-only action outside this interface.
+ */
 export interface ClaimReconciler {
-  listStuck(olderThanMs: number, now?: Date): Promise<StuckClaim[]>;
-  /** Conditional on the claim still being PROCESSING; false when it already moved. */
-  resolve(claimId: string, resolution: 'COMPLETED' | 'RELEASED'): Promise<boolean>;
+  /** Oldest-first PROCESSING claims claimed before `before`, at most `limit`. */
+  listStale(before: Date, limit: number): Promise<ClaimRef[]>;
+  /** Take the claim if PROCESSING and unleased (or lease expired); counts an attempt. Null when another worker holds it or it moved. */
+  lease(claimId: string, owner: string, now: Date, leaseMs: number): Promise<LeasedClaim | null>;
+  /** Conditional on still being PROCESSING and leased by `owner`. False when the lease was lost or the claim moved. */
+  finish(claimId: string, owner: string, to: ClaimResolution, reason: string): Promise<boolean>;
 }
+type MemoryClaim = { state: ClaimState; claimedAt: string; meta?: ClaimMeta; attempts: number; owner?: string; leaseUntil?: number; reason?: string };
 export class MemoryIdempotencyStore implements IdempotencyStore, ClaimReconciler {
-  readonly states = new Map<string, 'PROCESSING' | 'COMPLETED'>();
-  private readonly claimedAt = new Map<string, string>();
-  async claim(key: string): Promise<boolean> {
-    if (this.states.has(key)) return false;
-    this.states.set(key, 'PROCESSING');
-    this.claimedAt.set(key, new Date().toISOString());
+  private readonly claims = new Map<string, MemoryClaim>();
+  private readonly clock: () => Date;
+  constructor(clock: () => Date = () => new Date()) { this.clock = clock; }
+  get states(): ReadonlyMap<string, ClaimState> { return new Map([...this.claims].map(([key, claim]) => [key, claim.state])); }
+  detail(key: string): Readonly<MemoryClaim> | undefined { return this.claims.get(key); }
+  async claim(key: string, meta?: ClaimMeta): Promise<boolean> {
+    if (this.claims.has(key)) return false;
+    this.claims.set(key, { state: 'PROCESSING', claimedAt: this.clock().toISOString(), attempts: 0, ...(meta ? { meta } : {}) });
     return true;
   }
-  async complete(key: string): Promise<void> { this.states.set(key, 'COMPLETED'); }
-  async listStuck(olderThanMs: number, now = new Date()): Promise<StuckClaim[]> {
-    return [...this.states].filter(([key, state]) => state === 'PROCESSING' && now.getTime() - Date.parse(this.claimedAt.get(key)!) >= olderThanMs)
-      .map(([claimId]) => ({ claimId, claimedAt: this.claimedAt.get(claimId)! }));
+  async complete(key: string): Promise<void> {
+    const claim = this.claims.get(key);
+    if (claim && claim.state !== 'PROCESSING' && claim.state !== 'COMPLETED') throw Object.assign(new Error('claim moved'), { name: 'ConditionalCheckFailedException' });
+    if (claim) claim.state = 'COMPLETED';
   }
-  async resolve(claimId: string, resolution: 'COMPLETED' | 'RELEASED'): Promise<boolean> {
-    if (this.states.get(claimId) !== 'PROCESSING') return false;
-    if (resolution === 'COMPLETED') this.states.set(claimId, 'COMPLETED'); else { this.states.delete(claimId); this.claimedAt.delete(claimId); }
+  async listStale(before: Date, limit: number): Promise<ClaimRef[]> {
+    return [...this.claims].filter(([, c]) => c.state === 'PROCESSING' && Date.parse(c.claimedAt) < before.getTime())
+      .sort(([, a], [, b]) => a.claimedAt.localeCompare(b.claimedAt)).slice(0, limit).map(([claimId, c]) => ({ claimId, claimedAt: c.claimedAt }));
+  }
+  async lease(claimId: string, owner: string, now: Date, leaseMs: number): Promise<LeasedClaim | null> {
+    const c = this.claims.get(claimId);
+    if (!c || c.state !== 'PROCESSING' || (c.leaseUntil !== undefined && c.leaseUntil >= now.getTime())) return null;
+    c.owner = owner; c.leaseUntil = now.getTime() + leaseMs; c.attempts++;
+    return { claimId, claimedAt: c.claimedAt, attempts: c.attempts, ...(c.meta ? { meta: c.meta } : {}) };
+  }
+  async finish(claimId: string, owner: string, to: ClaimResolution, reason: string): Promise<boolean> {
+    const c = this.claims.get(claimId);
+    if (!c || c.state !== 'PROCESSING' || c.owner !== owner) return false;
+    c.state = to; c.reason = reason; delete c.owner; delete c.leaseUntil;
     return true;
   }
 }
@@ -75,17 +103,22 @@ export class InboundProcessor {
   constructor(store: IdempotencyStore, consume: (message: InboundMessage) => Promise<void>, resume?: (message: InboundMessage) => Promise<boolean>) {
     this.store = store; this.consume = consume; this.resume = resume;
   }
+  // A reconciler that already moved the claim wins; the work is done either way, so a lost race is not an error.
+  private async finish(key: string) {
+    try { await this.store.complete(key); } catch (error) { if (!isConditionFailure(error)) throw error; }
+  }
   async process(message: InboundMessage, prepare?: (message: InboundMessage) => Promise<InboundMessage>): Promise<'processed' | 'duplicate'> {
     message = InboundMessageSchema.parse(message);
     const key = JSON.stringify([message.customerExternalId, message.messageId]);
-    if (!await this.store.claim(key)) {
+    const meta = { customerExternalId: message.customerExternalId, messageId: message.messageId, channel: message.channel as Channel };
+    if (!await this.store.claim(key, meta)) {
       if (this.resume && await this.resume(message)) {
-        try { await this.store.complete(key); } catch (error) { if (!(error instanceof Error && error.name === 'ConditionalCheckFailedException')) throw error; }
+        await this.finish(key);
       }
       return 'duplicate';
     }
     await this.consume(prepare ? await prepare(message) : message);
-    await this.store.complete(key);
+    await this.finish(key);
     return 'processed';
   }
 }
