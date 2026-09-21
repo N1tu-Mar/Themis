@@ -2,7 +2,7 @@
 
 Layout in the existing ThemisMerchants table (pk merchantId), same keys as bank-tools' DynamoBankToolsStore:
 - "P#<merchantId>": {merchantId, doc: MerchantProfile, researchedAt, expiresAt (ISO strings), version,
-  sourceSummary, caseStates: {caseId: state} (processed-case ledger), rev (optimistic lock)}.
+  sourceSummary, researchSources: bounded URL/retrieval metadata, caseStates: {caseId: state}, rev}.
   Rows seeded by bank-tools (only merchantId+doc) read fine: researchedAt := doc.updatedAt, expiry := +default_ttl.
 - "A#<normalized alias>": {merchantId, target}; written only if absent or already pointing at the same merchant.
 The table has no TTL attribute, so expiresAt is data, not deletion.
@@ -59,7 +59,7 @@ class DynamoProfileStore:
         return CacheRecord(
             profile, researched, parse(row["expiresAt"]) if row.get("expiresAt") else researched + self._ttl,
             row.get("version", 1), row.get("sourceSummary", "internal profile"), row.get("caseStates", {}),
-            row.get("rev", 0))
+            row.get("rev", 0), row.get("researchSources", []))
 
     def get(self, merchant_id: str) -> CacheRecord | None:
         resp = self._c.get_item(TableName=self._table, Key={"merchantId": {"S": f"P#{merchant_id}"}}, ConsistentRead=True)
@@ -82,6 +82,7 @@ class DynamoProfileStore:
         item = {
             "merchantId": f"P#{p['merchantId']}", "doc": p, "researchedAt": iso(record.researched_at),
             "expiresAt": iso(record.expires_at), "version": record.version, "sourceSummary": record.source_summary,
+            "researchSources": record.sources,
             "caseStates": record.case_states, "rev": rev + 1}
         cond = ({"ConditionExpression": "attribute_not_exists(merchantId)"} if rev < 0 else
                 {"ConditionExpression": "attribute_not_exists(#r) OR #r = :r", "ExpressionAttributeNames": {"#r": "rev"},
@@ -95,7 +96,7 @@ class DynamoProfileStore:
         for alias in [p["canonicalName"], *p["aliases"]]:
             self._alias(normalize(alias), p["merchantId"])
         return CacheRecord(p, record.researched_at, record.expires_at, record.version, record.source_summary,
-                           record.case_states, rev + 1)
+                           record.case_states, rev + 1, record.sources)
 
     def _alias(self, alias: str, merchant_id: str) -> None:
         if not alias:

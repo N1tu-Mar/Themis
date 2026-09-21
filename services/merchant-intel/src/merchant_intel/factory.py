@@ -3,6 +3,7 @@
 MERCHANTS_TABLE                       set -> DynamoProfileStore on that table; unset -> in-memory (MERCHANT_STORE=memory forces it)
 MERCHANT_PROFILE_TTL_SECONDS          profile freshness (default 604800 = 7d)
 MERCHANT_RESEARCH_ENABLED             "true" to allow research (default off)
+MERCHANT_RESEARCH_APPROVED            "true" confirms the reviewed provider/config (required too)
 MERCHANT_RESEARCH_DOMAINS             comma-separated allowlist (required when enabled)
 MERCHANT_RESEARCH_MAX_PAGES / _TIMEOUT_SECONDS   defaults 3 / 10
 """
@@ -37,7 +38,9 @@ def intel_from_env(
     env = os.environ if environ is None else environ
     domains = [d for d in env.get("MERCHANT_RESEARCH_DOMAINS", "").split(",") if d.strip()]
     researcher = None
-    if env.get("MERCHANT_RESEARCH_ENABLED", "").lower() == "true" and page_client and sources and domains:
+    enabled = env.get("MERCHANT_RESEARCH_ENABLED", "").lower() == "true"
+    approved = env.get("MERCHANT_RESEARCH_APPROVED", "").lower() == "true"
+    if enabled and approved and page_client and sources and domains:
         researcher = BoundedResearcher(
             page_client, allowed_domains=domains, sources=sources,
             max_pages=int(env.get("MERCHANT_RESEARCH_MAX_PAGES", 3)),
