@@ -37,7 +37,7 @@ test('direct tool event sends a case email built from the case and report', asyn
   const report = fixture('demo-reports.json').find((r: { caseId: string }) => fixture('demo.json').some((c: { caseId: string }) => c.caseId === r.caseId));
   const kase = fixture('demo.json').find((c: { caseId: string }) => c.caseId === report.caseId);
   const out = await rt.handler({ themisTool: 'send_case_email', case: kase, report, recipient: 'customer1@example.test', nextSteps: ['We will update you.'] });
-  assert.deepEqual(out, { messageId: 'ses-1' });
+  assert.deepEqual(out, { status: 'SENT', messageId: 'ses-1' });
   assert.match(JSON.stringify(emails[0]), /customer1@example.test/);
 });
 

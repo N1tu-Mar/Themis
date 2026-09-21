@@ -2,7 +2,7 @@
 
 ## STATUS
 
-COMPLETE — deployable runtime composition implemented; Infra/integration wiring pending.
+COMPLETE — runtime composition + menu lifecycle + delivery reliability implemented; Infra wiring pending.
 
 ## DONE
 
@@ -17,6 +17,18 @@ COMPLETE — deployable runtime composition implemented; Infra/integration wirin
 - External configuration and injected AWS clients; all tests remain AWS-free.
 - Runtime dependencies declared locally; root lockfile update handed to integration.
 - Verified compatibility with updated main 52e8419 in an isolated snapshot; no merge.
+
+## MENUS + DELIVERY (agent/messaging/menus-reliability)
+
+- Runtime reply `{reply,status,caseId|null,suggestions?}`; suggestions validated (`parseSuggestions`), invalid = dropped.
+- Menu: one per customer, carries `caseId` + deterministic `menuId=menu:<messageId>`; persisted before send;
+  cleared conditionally on answer (caseId+menuId), terminal status (caseId), never by stale id.
+- `OutboundService`: delivery record (PENDING/ACCEPTED/FAILED/DELIVERED/UNDELIVERABLE) keyed by customer+messageId;
+  duplicate inbound resumes send from the record, never reruns AgentCore. RCS disabled = numbered SMS.
+- `createDeliveryEventHandler` on `THEMIS_DELIVERY_EVENT_TOPIC_ARN`; inbound topics reject delivery events and v.v.
+- `sendCaseNotification`: SES failure returns `{status:'FAILED'}`, recorded, case untouched.
+- `ClaimReconciler` (interface + memory impl) for stuck PROCESSING claims; `claimedAt` written by Dynamo claims.
+- Infra request: .handoffs/messaging/2026-09-20-delivery-events-infra.md
 
 ## CURRENT INTERFACES
 
@@ -33,7 +45,9 @@ COMPLETE — deployable runtime composition implemented; Infra/integration wirin
 ## KNOWN ISSUES
 
 - AWS calls are mocked; live resource provisioning/delivery verification is pending.
-- Failed/ambiguous processing keeps claims reserved; reconciliation is required before replay.
+- Failed/ambiguous processing keeps claims reserved; reconciliation is required before replay (interface only, no job).
+- Concurrent redeliveries of one reply can double-send (no send lock); ponytail ceiling.
+- Crash between recording a reply and persisting its menu is not repaired on resume.
 - At-most-once admission does not guarantee completion across external side effects.
 - Current Infra Lambda is Python and uses one indistinguishable RCS/SMS topic;
   it must consume the TypeScript bundle and provide distinct trusted topic ARNs.
@@ -44,10 +58,10 @@ COMPLETE — deployable runtime composition implemented; Infra/integration wirin
 
 1. Integration runs root npm install and commits the root lockfile.
 2. Infra deploys `dist/index.mjs`, distinct topic ARNs, env, permissions, and DLQ.
-3. Case/outbound flow writes and conditionally clears active menus; QA smoke-tests AWS.
+3. QA smoke-tests AWS; infra wires delivery topic; optional reconciliation job.
 
 ## LAST TEST COMMAND + RESULT
 
-- `npm --prefix services/messaging run build` — PASS; emits bundled Lambda.
-- `npm --prefix services/messaging test` — PASS, 27/27 tests.
-- `git diff --check` — PASS. All AWS clients mocked in tests.
+- `npm --prefix services/messaging run build` — PASS.
+- `npm --prefix services/messaging test` — PASS, 48/48 tests.
+- `git diff --check` — PASS. All AWS clients mocked.

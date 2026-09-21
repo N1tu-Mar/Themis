@@ -2,6 +2,10 @@ import { InboundMessageSchema, type InboundMessage } from '../../../packages/con
 import { normalizeChoice, type Choice } from './choices.ts';
 export type Channel = 'RCS' | 'SMS';
 export type SnsRecord = { EventSource: string; Sns: { TopicArn: string; Timestamp: string; Message: string } };
+// End User Messaging delivery records carry eventType/messageStatus and never inboundMessageId.
+export function isDeliveryEvent(payload: unknown): boolean {
+  return !!payload && typeof payload === 'object' && ('eventType' in payload || 'messageStatus' in payload);
+}
 export function normalizeInbound(payload: unknown, channel: Channel, receivedAt: string): InboundMessage {
   if (channel !== 'RCS' && channel !== 'SMS') throw new Error('Unsupported inbound channel');
   if (!payload || typeof payload !== 'object') throw new Error('Invalid inbound payload');
@@ -27,23 +31,52 @@ export interface IdempotencyStore {
   claim(key: string): Promise<boolean>;
   complete(key: string): Promise<void>;
 }
-export class MemoryIdempotencyStore implements IdempotencyStore {
+// Operator/job boundary for claims left PROCESSING by a crash or ambiguous failure. Nothing replays automatically:
+// a claim is either confirmed COMPLETED or RELEASED (deleted so the inbound message may be admitted again).
+export interface StuckClaim { readonly claimId: string; readonly claimedAt: string }
+export interface ClaimReconciler {
+  listStuck(olderThanMs: number, now?: Date): Promise<StuckClaim[]>;
+  /** Conditional on the claim still being PROCESSING; false when it already moved. */
+  resolve(claimId: string, resolution: 'COMPLETED' | 'RELEASED'): Promise<boolean>;
+}
+export class MemoryIdempotencyStore implements IdempotencyStore, ClaimReconciler {
   readonly states = new Map<string, 'PROCESSING' | 'COMPLETED'>();
+  private readonly claimedAt = new Map<string, string>();
   async claim(key: string): Promise<boolean> {
     if (this.states.has(key)) return false;
     this.states.set(key, 'PROCESSING');
+    this.claimedAt.set(key, new Date().toISOString());
     return true;
   }
   async complete(key: string): Promise<void> { this.states.set(key, 'COMPLETED'); }
+  async listStuck(olderThanMs: number, now = new Date()): Promise<StuckClaim[]> {
+    return [...this.states].filter(([key, state]) => state === 'PROCESSING' && now.getTime() - Date.parse(this.claimedAt.get(key)!) >= olderThanMs)
+      .map(([claimId]) => ({ claimId, claimedAt: this.claimedAt.get(claimId)! }));
+  }
+  async resolve(claimId: string, resolution: 'COMPLETED' | 'RELEASED'): Promise<boolean> {
+    if (this.states.get(claimId) !== 'PROCESSING') return false;
+    if (resolution === 'COMPLETED') this.states.set(claimId, 'COMPLETED'); else { this.states.delete(claimId); this.claimedAt.delete(claimId); }
+    return true;
+  }
 }
 export class InboundProcessor {
   private store: IdempotencyStore;
   private consume: (message: InboundMessage) => Promise<void>;
-  constructor(store: IdempotencyStore, consume: (message: InboundMessage) => Promise<void>) { this.store = store; this.consume = consume; }
+  private resume?: (message: InboundMessage) => Promise<boolean>;
+  // `resume` runs only for a duplicate: it may re-attempt delivery of an already-computed reply (never the consume
+  // effects) and returns true once that reply is settled, which lets the retained claim complete.
+  constructor(store: IdempotencyStore, consume: (message: InboundMessage) => Promise<void>, resume?: (message: InboundMessage) => Promise<boolean>) {
+    this.store = store; this.consume = consume; this.resume = resume;
+  }
   async process(message: InboundMessage, prepare?: (message: InboundMessage) => Promise<InboundMessage>): Promise<'processed' | 'duplicate'> {
     message = InboundMessageSchema.parse(message);
     const key = JSON.stringify([message.customerExternalId, message.messageId]);
-    if (!await this.store.claim(key)) return 'duplicate';
+    if (!await this.store.claim(key)) {
+      if (this.resume && await this.resume(message)) {
+        try { await this.store.complete(key); } catch (error) { if (!(error instanceof Error && error.name === 'ConditionalCheckFailedException')) throw error; }
+      }
+      return 'duplicate';
+    }
     await this.consume(prepare ? await prepare(message) : message);
     await this.store.complete(key);
     return 'processed';
@@ -73,6 +106,7 @@ export function createSnsHandler(options: {
       if (!channel) throw new Error('Untrusted SNS source');
       let payload: unknown;
       try { payload = JSON.parse(Message); } catch { throw new Error('Malformed SNS message'); }
+      if (isDeliveryEvent(payload)) throw new Error('Delivery event received on an inbound message topic');
       const message = normalizeInbound(payload, channel, Timestamp);
       results.push(await options.processor.process(message, async m => normalizeChoice(m, await options.choicesFor(m.customerExternalId))));
     }

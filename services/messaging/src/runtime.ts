@@ -1,3 +1,4 @@
+import { parseSuggestions, type Choice } from './choices.ts';
 import { InboundMessageSchema, type InboundMessage } from '../../../packages/contracts/src/index.ts';
 
 export interface AgentRuntimeRequest {
@@ -18,13 +19,18 @@ export interface AgentReply {
   readonly reply: string;
   readonly status: string;
   readonly caseId: string | null;
+  readonly suggestions?: readonly Choice[];
 }
 
 function parseReply(output: unknown): AgentReply | undefined {
   if (!output || typeof output !== 'object') return undefined;
-  const { reply, status, caseId } = output as Record<string, unknown>;
+  const { reply, status, caseId, suggestions } = output as Record<string, unknown>;
   if (typeof reply !== 'string' || !reply.trim()) return undefined;
-  return { reply, status: typeof status === 'string' ? status : 'UNKNOWN', caseId: typeof caseId === 'string' && caseId ? caseId : null };
+  // Bad suggestions are dropped, never the reply: the runtime has already acted and the customer needs the text.
+  let choices: Choice[] | undefined;
+  try { choices = suggestions === undefined || suggestions === null ? undefined : parseSuggestions(suggestions); } catch { /* text-only */ }
+  return { reply, status: typeof status === 'string' ? status : 'UNKNOWN', caseId: typeof caseId === 'string' && caseId ? caseId : null,
+    ...(choices ? { suggestions: choices } : {}) };
 }
 
 export class AgentRuntimeInvocationError extends Error {
