@@ -1,6 +1,7 @@
 // Local end-to-end composition (no AWS): SNS event -> messaging normalization/idempotency -> AgentCore runtime payload
 // -> Python orchestrator -> tools adapter (bank-tools + merchant-intel + workflow) behind the real Cedar policy text
 // -> report/escalation -> outbound message captured at the messaging client boundary.
+import { fakeDynamo } from '../../services/messaging/tests/fake-dynamo.ts';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -26,42 +27,7 @@ function agentProcess(extraEnv: Record<string, string> = {}) {
   return { ask };
 }
 
-function dynamo() {
-  type Item = Record<string, { S: string } & Record<string, unknown>>;
-  const items = new Map<string, Item>();
-  const key = (v: unknown) => String(((v as Record<string, Record<string, string>>).idempotencyKey).S);
-  const failed = () => Object.assign(new Error('condition'), { name: 'ConditionalCheckFailedException' });
-  return {
-    async putItem(p: Payload) {
-      const k = key(p.Item);
-      if (p.ConditionExpression && items.has(k)) throw failed();
-      items.set(k, structuredClone(p.Item) as Item); return {};
-    },
-    async updateItem(p: Payload) {
-      const item = items.get(key(p.Key));
-      const values = p.ExpressionAttributeValues as Record<string, { S: string }>;
-      const names = p.ExpressionAttributeNames as Record<string, string>;
-      const condition = p.ConditionExpression as string;
-      if (!item) throw failed();
-      if (condition.includes('IN') && ![':open0', ':open1', ':open2'].some(v => values[v].S === item.state.S)) throw failed();
-      if (condition.includes(':processing') && item.state.S !== 'PROCESSING') throw failed();
-      for (const assignment of (p.UpdateExpression as string).slice(4).split(', ')) {
-        const [name, value] = assignment.split(' = ');
-        item[names[name]] = values[value] as never;
-      }
-      return {};
-    },
-    async getItem(p: Payload) { return { Item: structuredClone(items.get(key(p.Key))) }; },
-    async deleteItem(p: Payload) {
-      const k = key(p.Key);
-      const item = items.get(k);
-      const values = p.ExpressionAttributeValues as Record<string, { S: string }>;
-      if (!item || item.caseId.S !== values[':caseId'].S || (values[':menuId'] && item.menuId.S !== values[':menuId'].S)) throw failed();
-      items.delete(k);
-      return {};
-    },
-  };
-}
+const dynamo = () => fakeDynamo().client;
 
 function compose(agent: { ask: (p: unknown) => Promise<{ reply: string; caseId: string | null }> }) {
   const outbound: Payload[] = [];
