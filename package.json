@@ -11,8 +11,11 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "test:python": "python3 -m pytest -q",
-    "check": "npm run build && npm test && npm run test:python && npm run test:integration",
-    "test:integration": "node --test tests/integration/*.test.ts"
+    "test:python": "python3.12 -m pytest -q",
+    "check": "npm run build && npm test && npm run test:python && npm run test:integration && npm run test:e2e:node",
+    "test:integration": "node --test tests/integration/*.test.ts",
+    "test:e2e:node": "node --test tests/e2e/*.test.ts",
+    "acceptance": "python3.12 scripts/acceptance.py --mode full",
+    "acceptance:json": "python3.12 scripts/acceptance.py --mode full --format json"
   }
 }
