@@ -1,0 +1,72 @@
+flowchart TB
+  customer["Customer"]
+
+  subgraph channels["Conversational channels"]
+    rcsSms["RCS / SMS"]
+    eum["AWS End User Messaging"]
+    inbound["Amazon SNS<br/>inbound customer-message topics"]
+    delivery["Amazon SNS<br/>delivery-event topic"]
+    messaging["AWS Lambda<br/>messaging runtime<br/>separate trusted handlers"]
+    ses["Amazon SES"]
+  end
+
+  subgraph agentcore["Amazon Bedrock AgentCore"]
+    runtime["AgentCore Runtime<br/>Themis orchestrator"]
+    gateway["AgentCore Gateway<br/>structured MCP tools"]
+    policy["AgentCore Policy<br/>Cedar authorization"]
+    memory["AgentCore Memory<br/>conversation context"]
+    browser["AgentCore Browser<br/>optional merchant research"]
+  end
+
+  bedrock["Amazon Bedrock<br/>foundation models"]
+
+  subgraph operations["Tools and durable state"]
+    adapter["AWS Lambda<br/>tools adapter"]
+    dynamo["Amazon DynamoDB<br/>transactions, cases, merchants,<br/>audit and idempotency"]
+    s3["Amazon S3<br/>reports and evidence"]
+  end
+
+  subgraph experience["Operations experience"]
+    amplify["AWS Amplify<br/>operations dashboard"]
+    cloudwatch["Amazon CloudWatch<br/>logs, metrics, alarms and dashboard"]
+  end
+
+  customer <-->|dispute conversation| rcsSms
+  rcsSms <--> eum
+  eum -->|trusted inbound message| inbound
+  inbound -->|customer-message handler| messaging
+  messaging -->|normalized turn| runtime
+  runtime -->|outbound reply| messaging
+  messaging --> eum
+  messaging -->|email outcome| ses
+  ses --> customer
+  eum -->|delivery receipts| delivery
+  delivery -->|delivery-event handler only| messaging
+
+  runtime <--> memory
+  runtime --> bedrock
+  runtime --> gateway
+  gateway --> policy
+  policy -->|allow or deny| adapter
+  runtime -. optional; runtime adapter pending .-> browser
+
+  adapter <--> dynamo
+  adapter --> s3
+  adapter -->|direct tool invocation| messaging
+
+  dynamo -. live data API pending .-> amplify
+  messaging --> cloudwatch
+  adapter --> cloudwatch
+  runtime --> cloudwatch
+
+  classDef person fill:#ffffff,stroke:#232f3e,stroke-width:2px,color:#232f3e;
+  classDef aws fill:#ff9900,stroke:#232f3e,stroke-width:2px,color:#111111;
+  classDef core fill:#8c4fff,stroke:#232f3e,stroke-width:2px,color:#ffffff;
+  classDef data fill:#3b48cc,stroke:#232f3e,stroke-width:2px,color:#ffffff;
+  classDef pending fill:#eeeeee,stroke:#666666,stroke-width:2px,stroke-dasharray:5 5,color:#333333;
+
+  class customer person;
+  class rcsSms,eum,inbound,messaging,ses,bedrock,adapter,amplify,cloudwatch aws;
+  class runtime,gateway,policy,memory core;
+  class dynamo,s3 data;
+  class delivery,browser pending;
