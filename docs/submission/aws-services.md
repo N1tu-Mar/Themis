@@ -6,7 +6,7 @@
 | AgentCore Gateway | Exposes structured dispute tools over MCP | Defined by CDK; live schema/name compatibility pending |
 | AgentCore Policy | Evaluates Cedar authorization for consequential tools | Defined by CDK and locally tested; live enforcement pending |
 | AgentCore Memory | Stores conversation context | Defined by CDK; live memory API behavior pending |
-| AgentCore Browser | Intended for bounded merchant research | Permission can be enabled, but the runtime adapter is not wired |
+| AgentCore Browser | Optional merchant research transport | Disabled by default; IAM requires enablement plus approval. The checked-in runtime uses a deterministic unavailable provider pending live API verification. |
 | Amazon Bedrock | Supplies fast and reasoning foundation models | IAM and model IDs are configured; live access pending |
 | AWS End User Messaging | Receives RCS/SMS and sends channel replies | Infrastructure is defined; identities require manual registration |
 | Amazon SNS | Separates inbound RCS/SMS messages from delivery events | Distinct topics invoke mutually exclusive handlers in the messaging Lambda |

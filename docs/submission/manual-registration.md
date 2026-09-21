@@ -29,7 +29,7 @@ These steps require human action in AWS or a provider workflow. They must stay o
 1. Select model IDs available in the deployment region and confirm account access.
 2. Verify live AgentCore Runtime, Gateway, Policy, and Memory resource creation.
 3. Validate the deployed runtime language/auth enum values, MCP tool-name prefixes, request context passed to Cedar, and Memory API behavior against the live service.
-4. Keep Browser research disabled until the runtime adapter and its guardrails are connected and tested.
+4. Keep Browser research disabled until live Browser session creation, navigation/redirect reporting, content-size behavior, and IAM behavior are tested in the target region. A live change requires both `ENABLE_BROWSER_RESEARCH=true` and `BROWSER_RESEARCH_APPROVED=true`, plus an approved merchant source allowlist/provider; the checked-in adapter fails closed.
 
 ## Amplify
 

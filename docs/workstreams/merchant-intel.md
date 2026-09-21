@@ -16,7 +16,7 @@ DURABLE_STORE_COMPLETE (local branch `agent/merchant-intel/durable-store`, not p
 - Scenario E test proves zero research calls, cached profile, verification still required.
 
 - Durable store: `DynamoProfileStore(client, table)` on ThemisMerchants (`P#id` profile+cache metadata+caseStates+rev, `A#alias`), conditional `rev` writes, `ConflictError` retried in `_merge`/`record_case`; `ProfileStore.put` now returns the stored record. `load_profiles` never overwrites stored data.
-- `BoundedResearcher(client, allowed_domains, sources, max_pages, timeout)`; `store_from_env` / `intel_from_env` (see `.handoffs/merchant-intel/20260920-durable-store-wiring.md`).
+- `BoundedResearcher(client, allowed_domains, sources, max_pages, timeout, max_response_bytes, resolver)`; its `BrowserProvider` contract is vendor-neutral and returns a typed `BrowserPage`. HTTPS/public-DNS/redirect/content-type/response-size/page-count/deadline checks are mandatory. `store_from_env` / `intel_from_env` require both `MERCHANT_RESEARCH_ENABLED` and `MERCHANT_RESEARCH_APPROVED`.
 - `schemas.json` packaged in the wheel (test guards drift vs contracts).
 
 ## CURRENT INTERFACES
@@ -33,7 +33,7 @@ DURABLE_STORE_COMPLETE (local branch `agent/merchant-intel/durable-store`, not p
 - Validator supports only the schema subset used by MerchantProfile/Merchant.
 - Failed research retried every read (no negative cache); `resolve()` scans the table.
 - Root pytest `pythonpath` lacks merchant-intel src (only its own tests self-configure); see handoff.
-- Real browser/LLM researcher and Gateway wiring not built.
+- Live AgentCore Browser session API behavior is not deployment-verified. The checked-in agent provider is deterministic/unavailable and fails closed; browser research remains opt-in.
 
 ## NEXT 3 TASKS
 

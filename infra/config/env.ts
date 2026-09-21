@@ -14,6 +14,8 @@ export interface ThemisConfig {
   readonly enableSmsFallback: boolean;
   readonly enableSes: boolean;
   readonly enableBrowserResearch: boolean;
+  /** Separate approval control; a feature toggle alone never grants Browser IAM. */
+  readonly browserResearchApproved: boolean;
   readonly enableProactiveDetection: boolean;
   readonly enableReasoningEscalation: boolean;
   readonly bedrockModelIdFast: string;
@@ -76,6 +78,7 @@ export function loadConfig(): ThemisConfig {
     enableSmsFallback: bool('ENABLE_SMS_FALLBACK', true),
     enableSes: bool('ENABLE_SES', true),
     enableBrowserResearch: bool('ENABLE_BROWSER_RESEARCH', false),
+    browserResearchApproved: bool('BROWSER_RESEARCH_APPROVED', false),
     enableProactiveDetection: bool('ENABLE_PROACTIVE_DETECTION', false),
     enableReasoningEscalation: bool('ENABLE_REASONING_ESCALATION', true),
     bedrockModelIdFast: requireForAwsMode(process.env.BEDROCK_MODEL_ID_FAST, 'BEDROCK_MODEL_ID_FAST'),
