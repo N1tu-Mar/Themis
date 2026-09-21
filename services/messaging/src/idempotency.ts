@@ -19,7 +19,7 @@ export class DynamoIdempotencyStore implements IdempotencyStore {
   async claim(key: string): Promise<boolean> {
     try {
       await this.client.putItem({ TableName: this.table,
-        Item: { idempotencyKey: await hashDynamoKey(key), state: { S: 'PROCESSING' } },
+        Item: { idempotencyKey: await hashDynamoKey(key), state: { S: 'PROCESSING' }, claimedAt: { S: new Date().toISOString() } },
         ConditionExpression: 'attribute_not_exists(idempotencyKey)' });
       return true;
     } catch (error) {

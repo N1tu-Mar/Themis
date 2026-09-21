@@ -1,4 +1,6 @@
 import { DynamoActiveMenuStore, type ActiveMenuDynamoClient } from './active-menu.ts';
+import { DynamoDeliveryStore, type DeliveryDynamoClient, type DeliveryStore } from './delivery-store.ts';
+import { createDeliveryEventHandler, OutboundService, sendCaseNotification, TERMINAL_CASE_STATUSES } from './delivery.ts';
 import { DynamoIdempotencyStore, type DynamoClient } from './idempotency.ts';
 import { createSnsHandler, InboundProcessor, type Channel } from './inbound.ts';
 import { AgentRuntimeConsumer, type AgentRuntimeClient } from './runtime.ts';
@@ -12,6 +14,9 @@ export interface RuntimeEnvironment {
   readonly agentRuntimeArn: string;
   readonly agentRuntimeQualifier?: string;
   readonly topics: Readonly<Record<string, Channel>>;
+  readonly rcsEnabled: boolean;
+  /** Trusted SNS topic for delivery events; absent = delivery events not consumed. Never an inbound topic. */
+  readonly deliveryEventTopicArn?: string;
 }
 
 function required(env: Record<string, string | undefined>, name: string): string {
@@ -47,6 +52,10 @@ export function parseRuntimeEnvironment(env: Record<string, string | undefined>)
     topics[arn] = 'SMS';
   }
 
+  const deliveryEventTopicArn = env.THEMIS_DELIVERY_EVENT_TOPIC_ARN?.trim()
+    ? topicArn(env.THEMIS_DELIVERY_EVENT_TOPIC_ARN.trim(), 'THEMIS_DELIVERY_EVENT_TOPIC_ARN') : undefined;
+  if (deliveryEventTopicArn && topics[deliveryEventTopicArn]) throw new Error('Delivery event topic must differ from inbound topics');
+
   const idempotencyTable = required(env, 'IDEMPOTENCY_TABLE');
   const agentRuntimeArn = required(env, 'AGENT_RUNTIME_ARN');
   if (!/^arn:(?:aws|aws-us-gov|aws-cn):bedrock-agentcore:[a-z0-9-]+:\d{12}:runtime\/[A-Za-z0-9_-]+$/.test(agentRuntimeArn)) {
@@ -59,10 +68,12 @@ export function parseRuntimeEnvironment(env: Record<string, string | undefined>)
     agentRuntimeArn,
     ...(qualifier ? { agentRuntimeQualifier: qualifier } : {}),
     topics: Object.freeze(topics),
+    rcsEnabled: enableRcs,
+    ...(deliveryEventTopicArn ? { deliveryEventTopicArn } : {}),
   });
 }
 
-export interface RuntimeDynamoClient extends DynamoClient, ActiveMenuDynamoClient {}
+export interface RuntimeDynamoClient extends DynamoClient, ActiveMenuDynamoClient, DeliveryDynamoClient {}
 
 export interface RuntimeDependencies {
   readonly dynamo: RuntimeDynamoClient;
@@ -70,6 +81,8 @@ export interface RuntimeDependencies {
   /** Outbound delivery. Without `messagingClient` the agent's reply is not sent (inbound-only composition). */
   readonly messagingClient?: MessagingClient;
   readonly sesClient?: SesClient;
+  /** Defaults to a Dynamo store on the idempotency table. */
+  readonly deliveryStore?: DeliveryStore;
 }
 
 type ToolEvent = { readonly themisTool?: unknown; readonly [key: string]: unknown };
@@ -87,18 +100,29 @@ export function createMessagingRuntime(env: Record<string, string | undefined>, 
       dependencies.messagingClient)
     : undefined;
   const email = dependencies.sesClient ? new SesAdapter('aws', dependencies.sesClient) : undefined;
+  const deliveries = dependencies.deliveryStore ?? new DynamoDeliveryStore(config.idempotencyTable, dependencies.dynamo);
+  const outbound = channel ? new OutboundService({ channel, menus: activeMenus, deliveries, rcsEnabled: config.rcsEnabled }) : undefined;
   const processor = new InboundProcessor(
     new DynamoIdempotencyStore(config.idempotencyTable, dependencies.dynamo),
     async (message) => {
+      // The customer's answer closes the menu it answered (conditionally: a newer menu survives).
+      const menu = message.postback === null ? null : await activeMenus.get(message.customerExternalId);
+      const answered = menu?.choices.some(c => c.postback === message.postback) ? menu : null;
+      // Replies are recorded and sent after admission is claimed: a failed send is retried from the delivery
+      // record on redelivery and never replays AgentCore.
       const answer = await runtime.consume(message);
-      // Replies are sent after admission is claimed: a failed send is surfaced, never replayed into AgentCore.
-      if (answer && channel && message.channel !== 'EMAIL') {
-        await channel.send(OutboundMessageSchema.parse({
+      if (answered) await activeMenus.clear(answered.customerExternalId, answered.caseId, answered.menuId);
+      const terminal = TERMINAL_CASE_STATUSES.has(answer?.status ?? '');
+      if (terminal && answer?.caseId) await activeMenus.clear(message.customerExternalId, answer.caseId);
+      if (answer && outbound && message.channel !== 'EMAIL') {
+        await outbound.deliver(OutboundMessageSchema.parse({
           channel: message.channel, customerExternalId: message.customerExternalId,
           messageId: `reply:${message.messageId}`, caseId: answer.caseId ?? 'no-case-yet', text: answer.reply,
-        }));
+          ...(answer.suggestions ? { suggestions: answer.suggestions } : {}),
+        }), terminal);
       }
     },
+    message => outbound ? outbound.resume(message.customerExternalId, `reply:${message.messageId}`) : Promise.resolve(false),
   );
   const snsHandler = createSnsHandler({
     topics: config.topics,
@@ -108,16 +132,21 @@ export function createMessagingRuntime(env: Record<string, string | undefined>, 
   // Tools-adapter Lambda invokes this function directly ({themisTool, ...}) for send_customer_message / send_case_email.
   const handleTool = async (event: ToolEvent) => {
     if (event.themisTool === 'send_customer_message' && channel) {
-      return { messageId: await channel.send(OutboundMessageSchema.parse(event.message)) };
+      return { messageId: (await outbound!.deliver(OutboundMessageSchema.parse(event.message))).providerMessageId };
     }
     if (event.themisTool === 'send_case_email' && email) {
-      return { messageId: await email.send({
+      return await sendCaseNotification(email, deliveries, {
         case: event.case as never, report: event.report as never, recipient: String(event.recipient),
-        nextSteps: event.nextSteps as string[], sender: required(env, 'THEMIS_SES_FROM'), support: required(env, 'THEMIS_SUPPORT') }) };
+        nextSteps: event.nextSteps as string[], sender: required(env, 'THEMIS_SES_FROM'), support: required(env, 'THEMIS_SUPPORT') });
     }
     throw new Error('Unsupported tool event');
   };
-  const handler = (event: unknown) => (event && typeof event === 'object' && 'themisTool' in event)
-    ? handleTool(event as ToolEvent) : snsHandler(event);
-  return Object.freeze({ config, handler, activeMenus });
+  const deliveryHandler = createDeliveryEventHandler({ topics: new Set(config.deliveryEventTopicArn ? [config.deliveryEventTopicArn] : []), store: deliveries });
+  const handler = (event: unknown) => {
+    if (event && typeof event === 'object' && 'themisTool' in event) return handleTool(event as ToolEvent);
+    // Delivery events and inbound messages are routed by trusted topic and handled by separate boundaries.
+    const topic = (event as { Records?: { Sns?: { TopicArn?: unknown } }[] } | null)?.Records?.[0]?.Sns?.TopicArn;
+    return topic !== undefined && topic === config.deliveryEventTopicArn ? deliveryHandler(event) : snsHandler(event);
+  };
+  return Object.freeze({ config, handler, activeMenus, deliveries });
 }

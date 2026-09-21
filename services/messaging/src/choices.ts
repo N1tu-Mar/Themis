@@ -24,3 +24,15 @@ export function smsText(message: OutboundMessage): string {
   if (!message.suggestions?.length) return message.text;
   return `${message.text}\n\nReply:\n${message.suggestions.map((c, i) => `${i + 1} — ${c.label}`).join('\n')}`;
 }
+// Validates untrusted suggestions (e.g. from AgentCore); throws on any violation.
+export function parseSuggestions(value: unknown): Choice[] {
+  if (!Array.isArray(value) || !value.length || value.length > 11) throw new Error('Suggestions must contain between 1 and 11 choices');
+  const seen = new Set<string>();
+  return value.map((entry) => {
+    const { label, postback, ...rest } = (entry ?? {}) as Record<string, unknown>;
+    if (Object.keys(rest).length || typeof label !== 'string' || typeof postback !== 'string' || !label.trim() || !postback.trim()
+      || label.length > 25 || postback.length > 2048 || seen.has(postback)) throw new Error('Invalid suggestion');
+    seen.add(postback);
+    return { label, postback };
+  });
+}

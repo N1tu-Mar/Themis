@@ -157,7 +157,8 @@ test('active menu is recovered durably and stale case cleanup cannot remove its 
   });
   assert.deepEqual(await recovered.handler(sns(smsTopic, '2', 'menu-reply-1')), ['processed']);
   assert.equal((messages[0] as { postback: string }).postback, 'DO_NOT_RECOGNIZE');
-  assert.equal((await recovered.activeMenus.get(customer))?.caseId, 'case-current');
+  // The customer's answer closes the menu it answered.
+  assert.equal(await recovered.activeMenus.get(customer), null);
   assertDynamoPartitionKeys(dynamo.requests);
 });
 
