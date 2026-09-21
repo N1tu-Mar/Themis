@@ -337,6 +337,7 @@ class Orchestrator:
         self._report(st, required=True, phase="pre-final")
         # outcome rides on the status update: the bank refuses early RESOLVED without it
         self._move(st, "RESOLVED", **({"outcome": st.outcome} if self.cfg.structured_tools else {}))
+        self._report(st, phase="final")
         return RECOGNIZED_MSG
 
     # -- investigation -> proposal -> policy -----------------------------------
@@ -496,6 +497,7 @@ class Orchestrator:
         self._report(st, required=True, phase="pre-final")
         self._move(st, "ACTION_APPROVED")
         self._move(st, "RESOLVED")
+        self._report(st, phase="final")
         return self._resolved_text(st)
 
     def _stored_state_matches(self, st: CaseState) -> bool:
