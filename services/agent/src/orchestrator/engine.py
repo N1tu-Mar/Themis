@@ -28,6 +28,9 @@ RECOGNIZED_MSG = "Glad we could sort that out. I've noted that you recognize thi
 
 DENIAL_CLAIMS = ("UNAUTHORIZED_TRANSACTION", "UNRECOGNIZED_MERCHANT", "RECURRING_PAYMENT_NOT_AUTHORIZED")
 CLAIM_KEYS = ("recognizes_merchant", "canceled", "denies_authorization", "requested_block")
+MAX_CUSTOMER_MESSAGE_CHARS = 4_000
+IDENTITY_MISMATCH_MSG = "I can't access that conversation for this customer. Please start a new conversation or contact support."
+MESSAGE_TOO_LONG_MSG = "That message is too long for me to process safely. Please resend a shorter description of the charge."
 
 
 class ToolFailure(Exception):
@@ -98,7 +101,17 @@ class Orchestrator:
 
     def handle_turn(self, conversation_id: str, customer_id: str, message: str) -> Reply:
         raw = self.memory.load(conversation_id)
-        st = CaseState.from_dict(raw) if raw else CaseState(conversation_id, customer_id)
+        if raw:
+            st = CaseState.from_dict(raw)
+            # Conversation IDs are channel identities. Never attach an existing
+            # conversation to a different bank customer if a directory mapping is
+            # changed or a caller supplies inconsistent identity fields.
+            if st.customer_id != customer_id:
+                return Reply(IDENTITY_MISMATCH_MSG, "UNVERIFIED")
+        else:
+            st = CaseState(conversation_id, customer_id)
+        if len(message) > MAX_CUSTOMER_MESSAGE_CHARS:
+            return Reply(MESSAGE_TOO_LONG_MSG, "INPUT_REJECTED", st.case_id)
         try:
             text = self._turn(st, message)
         except ToolFailure as exc:

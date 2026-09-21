@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # so `orchestrator` imports when run as a script
 
 from orchestrator.config import Config  # noqa: E402
-from orchestrator.engine import Orchestrator  # noqa: E402
+from orchestrator.engine import MAX_CUSTOMER_MESSAGE_CHARS, Orchestrator  # noqa: E402
 from orchestrator.local import HeuristicModel, InMemoryMemory, LocalGateway, StubResearch  # noqa: E402
 
 
@@ -28,6 +28,7 @@ def build(cfg: Config) -> Orchestrator:
 
 
 UNVERIFIED_MSG = "I can't match this number to a customer profile, so I can't help with account questions here."
+MAX_REQUEST_BYTES = 64 * 1024
 
 
 def load_directory(path: str | None = None) -> dict[str, str]:
@@ -43,9 +44,21 @@ def _reply(agent: Orchestrator, payload: dict, directory: dict[str, str] | None 
         if customer is None:
             return {"reply": UNVERIFIED_MSG, "status": "UNVERIFIED", "caseId": None}
         # Messaging resolves active-menu SMS numbers/labels to the same canonical postback used by RCS.
-        payload = {"conversationId": sender, "customerId": customer, "message": payload.get("postback") or payload.get("text") or ""}
-    r = agent.handle_turn(str(payload.get("conversationId", "local-1")), str(payload.get("customerId", "customer_demo_001")),
-                          str(payload.get("message", "")))
+        message = payload.get("postback") or payload.get("text") or ""
+        if not isinstance(message, str):
+            raise ValueError("message must be text")
+        payload = {"conversationId": sender, "customerId": customer, "message": message}
+    conversation_id = payload.get("conversationId", "local-1")
+    customer_id = payload.get("customerId", "customer_demo_001")
+    message = payload.get("message", "")
+    if not all(isinstance(v, str) for v in (conversation_id, customer_id, message)):
+        raise ValueError("conversationId, customerId, and message must be text")
+    if not conversation_id or not customer_id:
+        raise ValueError("conversationId and customerId are required")
+    if len(message) > MAX_CUSTOMER_MESSAGE_CHARS:
+        # Let the orchestrator return its stable customer-safe rejection.
+        message = message[: MAX_CUSTOMER_MESSAGE_CHARS + 1]
+    r = agent.handle_turn(conversation_id, customer_id, message)
     out = {"reply": r.text, "status": r.status, "caseId": r.case_id}
     return {**out, "suggestions": r.suggestions} if r.suggestions else out
 
@@ -78,8 +91,15 @@ def run_server(agent: Orchestrator, port: int = 8080) -> None:
             if self.path != "/invocations":
                 return self._send(404, {})
             try:
-                payload = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                length = int(self.headers.get("Content-Length", 0))
+                if length < 0 or length > MAX_REQUEST_BYTES:
+                    return self._send(413, {"error": "request too large"})
+                payload = json.loads(self.rfile.read(length) or b"{}")
+                if not isinstance(payload, dict):
+                    return self._send(400, {"error": "invalid request"})
                 self._send(200, _reply(agent, payload))
+            except (ValueError, json.JSONDecodeError):
+                self._send(400, {"error": "invalid request"})
             except Exception:  # noqa: BLE001 - never leak internals to the caller
                 self._send(500, {"error": "internal error"})
 
