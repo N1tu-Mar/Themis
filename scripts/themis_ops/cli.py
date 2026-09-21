@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+from pathlib import Path
 import sys
 from typing import Sequence
 
-from .aws import AwsCli, OpsError, STACKS, Target, require_outputs
+from .aws import AwsCli, OpsError, STACKS, Target, require_confirmation, require_outputs
+from .seed import apply_seed, build_seed_plan, discover_seed_tables
 
 
 REQUIRED_OUTPUTS = {
@@ -52,6 +53,10 @@ def parser() -> argparse.ArgumentParser:
     commands = result.add_subparsers(dest="command", required=True)
     preflight = commands.add_parser("preflight", help="validate identity, stacks, and outputs (read-only)")
     target_arguments(preflight)
+    seed = commands.add_parser("seed", help="plan or apply the committed synthetic DynamoDB fixtures")
+    target_arguments(seed)
+    seed.add_argument("--apply", action="store_true", help="write fixture rows; default only prints an offline plan")
+    seed.add_argument("--confirm", help="must exactly equal ACCOUNT:REGION:STAGE with --apply")
     return result
 
 
@@ -62,6 +67,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         aws = AwsCli(target)
         if args.command == "preflight":
             print(json.dumps(deployed_preflight(aws), indent=2, sort_keys=True))
+        elif args.command == "seed":
+            plan = build_seed_plan(Path(__file__).resolve().parents[2])
+            require_confirmation(target, args.apply, args.confirm)
+            result: dict[str, object] = {
+                "mode": "apply" if args.apply else "dry-run", "target": target.confirmation,
+                "digest": plan.digest, "counts": plan.counts,
+            }
+            if args.apply:
+                aws.verify_identity()
+                tables = discover_seed_tables(aws)
+                result.update({"tables": tables, "written": apply_seed(aws, plan, tables)})
+            else:
+                result["note"] = "offline plan only; no AWS calls made"
+            print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     except OpsError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -70,4 +89,3 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

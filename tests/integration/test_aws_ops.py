@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import subprocess
 
 import pytest
 
 from scripts.themis_ops.aws import AwsCli, OpsError, Target, require_confirmation
 from scripts.themis_ops.cli import REQUIRED_OUTPUTS, deployed_preflight
+from scripts.themis_ops.seed import DATA_OUTPUTS, apply_seed, build_seed_plan, discover_seed_tables
 
 
 class FakeRunner:
@@ -58,3 +60,37 @@ def test_preflight_refuses_wrong_live_account_before_stack_reads():
     with pytest.raises(OpsError, match="refusing target"):
         deployed_preflight(aws)
     assert len(runner.calls) == 1
+
+
+def test_seed_plan_is_deterministic_and_contains_only_expected_fixture_layout():
+    root = Path(__file__).resolve().parents[2]
+    first, second = build_seed_plan(root), build_seed_plan(root)
+    assert first.digest == second.digest
+    assert first.counts["transactions"] == 1200
+    assert first.counts["cases"] == 51  # 17 cases + 34 evidence rows
+    assert any(row["merchantId"] == {"S": "C#customer_demo_001"} for row in first.items["merchants"])
+    assert any(row["merchantId"] == {"S": "A#ASTERIAIO"} for row in first.items["merchants"])
+
+
+def test_seed_discovers_only_active_exact_account_region_tables():
+    outputs = [{"OutputKey": output, "OutputValue": table} for (_, output), table in zip(
+        DATA_OUTPUTS.items(),
+        ("ThemisTransactions", "ThemisCases", "ThemisMerchants"), strict=True,
+    )]
+    responses = [{"json": {"Stacks": [{"StackStatus": "UPDATE_COMPLETE", "Outputs": outputs}]}}]
+    for table in ("ThemisTransactions", "ThemisCases", "ThemisMerchants"):
+        responses.append({"json": {"Table": {"TableStatus": "ACTIVE", "TableArn": f"arn:aws:dynamodb:us-east-1:123456789012:table/{table}"}}})
+    runner = FakeRunner(responses)
+    aws = AwsCli(Target("123456789012", "us-east-1", "demo"), runner=runner)
+    assert discover_seed_tables(aws)["cases"] == "ThemisCases"
+
+
+def test_seed_batches_writes_and_retries_unprocessed_items():
+    plan = build_seed_plan(Path(__file__).resolve().parents[2])
+    small = type(plan)({"transactions": plan.items["transactions"][:2]}, "digest")
+    pending = {"ThemisTransactions": [{"PutRequest": {"Item": plan.items["transactions"][0]}}]}
+    runner = FakeRunner([{"json": {"UnprocessedItems": pending}}, {"json": {"UnprocessedItems": {}}}])
+    aws = AwsCli(Target("123456789012", "us-east-1", "demo"), runner=runner)
+    assert apply_seed(aws, small, {"transactions": "ThemisTransactions"}) == 2
+    assert len(runner.calls) == 2
+    assert all(call[1]["input"] for call in runner.calls)
