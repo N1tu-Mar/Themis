@@ -21,3 +21,7 @@ class ConflictError(ToolError):
 
 class InvalidTransitionError(ToolError):
     code = "INVALID_TRANSITION"
+
+
+class LeaseLostError(Exception):
+    """This worker's idempotency lease was expired and taken over (or released); it must not write the result."""

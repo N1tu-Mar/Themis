@@ -11,7 +11,8 @@ so those share the existing tables via key prefixes -- see .handoffs/bank-tools/
   "C#id" customer. Each row is {merchantId, doc} (alias rows: {merchantId, target}).
 - Audit: pk caseId, sk eventId; "audit_*" audit events, "policy_*" decisions, "review_*"
   human-review requests. Each row is {caseId, eventId, doc}.
-- Idempotency: pk idempotencyKey = "<tool>#<key>", TTL attribute expiresAt.
+- Idempotency: pk idempotencyKey = "<tool>#<key>", TTL attribute expiresAt, leaseOwner = per-claim uuid token
+  (every complete/release is conditional on it; rows without leaseOwner are legacy).
 
 ponytail: no cross-item transactions -- a crash mid-tool leaves partial writes and the key
 stays IN_PROGRESS until its lease expires, after which a retry re-runs the tool. replace_case
@@ -22,16 +23,17 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .errors import ConflictError, NotFoundError
+from .errors import ConflictError, LeaseLostError, NotFoundError
 from .models import (
     ActionType, AuditRecord, AuditResult, Case, Evidence, HumanReviewRequest, Merchant,
     MerchantProfile, PolicyDecision, PolicyOutcome, Transaction, now_iso,
 )
 from .store import (
-    CLAIM_LEASE_SECONDS, CLAIMED, IN_PROGRESS, MISMATCH, REPLAY, IdempotencyClaim, _parse_ts,
+    CLAIM_LEASE_SECONDS, CLAIMED, CURRENT_LEASE, IN_PROGRESS, MISMATCH, REPLAY, IdempotencyClaim, _parse_ts,
     build_audit_record, new_id, normalize_descriptor,
 )
 
@@ -160,16 +162,16 @@ class DynamoBankToolsStore:
     def claim_idempotency(
         self, tool: str, key: str, fingerprint: str, lease_seconds: int = CLAIM_LEASE_SECONDS,
     ) -> IdempotencyClaim:
-        slot, now = f"{tool}#{key}", int(time.time())
+        slot, now, owner = f"{tool}#{key}", int(time.time()), uuid.uuid4().hex
         for _ in range(3):  # a TTL sweep can delete the row between the failed put and the read
             try:
                 self._put(self._t.idempotency, {
-                    "idempotencyKey": slot, "fingerprint": fingerprint, "status": "IN_PROGRESS",
+                    "idempotencyKey": slot, "fingerprint": fingerprint, "status": "IN_PROGRESS", "leaseOwner": owner,
                     "leaseExpiresAt": now + lease_seconds, "expiresAt": now + IDEMPOTENCY_TTL_SECONDS,
                 }, condition="attribute_not_exists(idempotencyKey) OR "
                              "(#s = :inprog AND leaseExpiresAt < :now AND fingerprint = :fp)",
                     values={":inprog": "IN_PROGRESS", ":now": now, ":fp": fingerprint})
-                return IdempotencyClaim(CLAIMED)
+                return IdempotencyClaim(CLAIMED, owner=owner)
             except Exception as exc:
                 if not _conditional_failed(exc):
                     raise
@@ -183,12 +185,19 @@ class DynamoBankToolsStore:
             return IdempotencyClaim(IN_PROGRESS)
         return IdempotencyClaim(IN_PROGRESS)
 
+    def _owner_condition(self) -> tuple[str, dict[str, Any]]:
+        """Condition that only the holder of CURRENT_LEASE passes. Tokenless callers (direct tool use, rows
+        written before owner tokens existed) match only rows with no leaseOwner, never a live token holder."""
+        token = CURRENT_LEASE.get()
+        return ("leaseOwner = :owner", {":owner": token}) if token else ("attribute_not_exists(leaseOwner)", {})
+
     def release_idempotency(self, tool: str, key: str) -> None:
+        owned, values = self._owner_condition()
         try:
             self._c.delete_item(
                 TableName=self._t.idempotency, Key=_item(idempotencyKey=f"{tool}#{key}"),
-                ConditionExpression="#s = :inprog", ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues=_item(**{":inprog": "IN_PROGRESS"}),
+                ConditionExpression=f"#s = :inprog AND {owned}", ExpressionAttributeNames={"#s": "status"},
+                ExpressionAttributeValues=_item(**{":inprog": "IN_PROGRESS", **values}),
             )
         except Exception as exc:
             if not _conditional_failed(exc):
@@ -201,15 +210,22 @@ class DynamoBankToolsStore:
         return json.loads(row["result"]) if row and row["status"] == "COMPLETE" else None
 
     def remember_result(self, tool: str, key: str | None, result: dict[str, Any]) -> None:
-        if key:
+        if not key:
+            return
+        owned, values = self._owner_condition()  # status not checked: the owner may complete twice (tool, then dispatch)
+        try:
             self._c.update_item(
                 TableName=self._t.idempotency, Key=_item(idempotencyKey=f"{tool}#{key}"),
-                UpdateExpression="SET #s = :done, #r = :result, expiresAt = :ttl",
+                UpdateExpression="SET #s = :done, #r = :result, expiresAt = :ttl", ConditionExpression=owned,
                 ExpressionAttributeValues=_item(**{
                     ":done": "COMPLETE", ":result": json.dumps(result),
-                    ":ttl": int(time.time()) + IDEMPOTENCY_TTL_SECONDS,
+                    ":ttl": int(time.time()) + IDEMPOTENCY_TTL_SECONDS, **values,
                 }), ExpressionAttributeNames={"#s": "status", "#r": "result"},
             )
+        except Exception as exc:
+            if _conditional_failed(exc):
+                raise LeaseLostError(f"{tool}#{key}") from exc
+            raise
 
     # -- transactions / customers ---------------------------------------------------
     def get_transaction(self, transaction_id: str) -> Transaction:

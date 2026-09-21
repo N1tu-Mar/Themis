@@ -14,6 +14,7 @@ seed time.
 from __future__ import annotations
 
 import bisect
+import contextvars
 import re
 import threading
 import time
@@ -22,7 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
-from .errors import ConflictError, NotFoundError
+from .errors import ConflictError, LeaseLostError, NotFoundError
 from .models import (
     ActionType, AuditRecord, AuditResult, Case, Evidence, HumanReviewRequest, Merchant,
     MerchantProfile, PolicyDecision, PolicyOutcome, Transaction, now_iso,
@@ -51,12 +52,16 @@ def new_id(prefix: str) -> str:
 # with different arguments.
 CLAIMED, REPLAY, IN_PROGRESS, MISMATCH = "CLAIMED", "REPLAY", "IN_PROGRESS", "MISMATCH"
 CLAIM_LEASE_SECONDS = 60
+# Owner token of the lease the current worker holds. dispatch sets it after a CLAIMED claim; stores read it in
+# remember_result/release_idempotency so tool signatures stay frozen. Unset (direct tool use, legacy rows) = tokenless.
+CURRENT_LEASE: contextvars.ContextVar[str | None] = contextvars.ContextVar("CURRENT_LEASE", default=None)
 
 
 @dataclass(frozen=True, slots=True)
 class IdempotencyClaim:
     state: str
     result: dict[str, Any] | None = None
+    owner: str | None = None  # lease owner token, set only when state == CLAIMED
 
 
 class BankToolsStorage(Protocol):
@@ -116,7 +121,7 @@ def build_audit_record(
 class BankToolsStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._claims: dict[tuple[str, str], tuple[float, str]] = {}  # (tool, key) -> (lease expiry, fingerprint)
+        self._claims: dict[tuple[str, str], tuple[float, str, str]] = {}  # (tool, key) -> (lease expiry, fingerprint, owner)
         self._transactions: dict[str, Transaction] = {}
         self._by_customer: dict[str, list[Transaction]] = {}
         self._customers: dict[str, dict[str, Any]] = {}
@@ -165,28 +170,37 @@ class BankToolsStore:
             return None
         return self._idempotency.get((tool, key))
 
+    def _owns(self, slot: tuple[str, str]) -> bool:
+        token = CURRENT_LEASE.get()
+        return token is None or (slot in self._claims and self._claims[slot][2] == token)
+
     def remember_result(self, tool: str, key: str | None, result: dict[str, Any]) -> None:
         if key:
-            self._idempotency[(tool, key)] = result
+            with self._lock:
+                if not self._owns((tool, key)):
+                    raise LeaseLostError(f"{tool}#{key}")
+                self._idempotency[(tool, key)] = result
 
     def claim_idempotency(
         self, tool: str, key: str, fingerprint: str, lease_seconds: int = CLAIM_LEASE_SECONDS,
     ) -> IdempotencyClaim:
         with self._lock:
             slot = (tool, key)
-            expiry, prior_fp = self._claims.get(slot, (0.0, fingerprint))
+            expiry, prior_fp, _ = self._claims.get(slot, (0.0, fingerprint, ""))
             if prior_fp != fingerprint:
                 return IdempotencyClaim(MISMATCH)
             if slot in self._idempotency:
                 return IdempotencyClaim(REPLAY, self._idempotency[slot])
             if expiry > time.time():
                 return IdempotencyClaim(IN_PROGRESS)
-            self._claims[slot] = (time.time() + lease_seconds, fingerprint)
-            return IdempotencyClaim(CLAIMED)
+            owner = uuid.uuid4().hex
+            self._claims[slot] = (time.time() + lease_seconds, fingerprint, owner)
+            return IdempotencyClaim(CLAIMED, owner=owner)
 
     def release_idempotency(self, tool: str, key: str) -> None:
         with self._lock:
-            self._claims.pop((tool, key), None)
+            if self._owns((tool, key)):  # stale owner: no-op, successor keeps its lease
+                self._claims.pop((tool, key), None)
 
     # -- transactions -----------------------------------------------------
     def get_transaction(self, transaction_id: str) -> Transaction:

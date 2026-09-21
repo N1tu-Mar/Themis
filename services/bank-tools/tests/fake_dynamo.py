@@ -63,8 +63,9 @@ class FakeDynamo:
         self._check(self.rows[TableName].get(key), ConditionExpression, ExpressionAttributeNames, ExpressionAttributeValues)
         self.rows[TableName].pop(key, None)
 
-    def update_item(self, TableName, Key, UpdateExpression, ExpressionAttributeValues, ExpressionAttributeNames):
+    def update_item(self, TableName, Key, UpdateExpression, ExpressionAttributeValues, ExpressionAttributeNames, ConditionExpression=None):
         self.calls.append("update_item")
+        self._check(self.rows[TableName].get(self._key(TableName, Key)), ConditionExpression, ExpressionAttributeNames, ExpressionAttributeValues)
         item = self.rows[TableName].setdefault(self._key(TableName, Key), dict(Key))
         for assign in UpdateExpression.removeprefix("SET ").split(", "):
             left, right = (x.strip() for x in assign.split(" = "))
