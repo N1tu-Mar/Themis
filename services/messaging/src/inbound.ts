@@ -2,6 +2,8 @@ import { InboundMessageSchema, type InboundMessage } from '../../../packages/con
 import { normalizeChoice, type Choice } from './choices.ts';
 export type Channel = 'RCS' | 'SMS';
 export type SnsRecord = { EventSource: string; Sns: { TopicArn: string; Timestamp: string; Message: string } };
+const MAX_INBOUND_TEXT_LENGTH = 4_000;
+const MAX_PROVIDER_MESSAGE_ID_LENGTH = 256;
 // End User Messaging delivery records carry eventType/messageStatus and never inboundMessageId.
 export function isDeliveryEvent(payload: unknown): boolean {
   return !!payload && typeof payload === 'object' && ('eventType' in payload || 'messageStatus' in payload);
@@ -11,6 +13,11 @@ export function normalizeInbound(payload: unknown, channel: Channel, receivedAt:
   if (!payload || typeof payload !== 'object') throw new Error('Invalid inbound payload');
   const event = payload as Record<string, unknown>;
   if (typeof event.messageBody !== 'string') throw new Error('Expected messageBody text');
+  if (event.messageBody.length > MAX_INBOUND_TEXT_LENGTH) throw new Error('Inbound message exceeds maximum length');
+  if (typeof event.originationNumber !== 'string' || !/^\+[1-9]\d{7,14}$/.test(event.originationNumber)) throw new Error('Invalid inbound sender');
+  if (typeof event.inboundMessageId !== 'string' || !event.inboundMessageId || event.inboundMessageId.length > MAX_PROVIDER_MESSAGE_ID_LENGTH) {
+    throw new Error('Invalid inbound message id');
+  }
   let text = event.messageBody;
   let postback: string | null = null;
   if (channel === 'RCS') {

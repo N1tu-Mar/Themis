@@ -31,6 +31,10 @@ NOT_OWNED_TOOLS = {
     "send_customer_message": "messaging",
     "send_case_email": "messaging",
 }
+MAX_ARGUMENT_STRING_LENGTH = 4_096
+MAX_IDEMPOTENCY_KEY_LENGTH = 256
+MAX_LIST_ITEMS = 100
+MAX_LIST_ITEM_LENGTH = 256
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +154,12 @@ def _type_problem(p: Param, value: Any) -> str | None:
         ok = isinstance(value, list) and all(isinstance(v, str) for v in value)
     if not ok:
         return f"{p.camel} must be a {'nonempty ' if p.required and p.kind == 'str' else ''}{p.kind}"
+    if p.kind == "str":
+        limit = MAX_IDEMPOTENCY_KEY_LENGTH if p.camel == "idempotencyKey" else MAX_ARGUMENT_STRING_LENGTH
+        if len(value) > limit:
+            return f"{p.camel} exceeds maximum length {limit}"
+    if p.kind == "list" and (len(value) > MAX_LIST_ITEMS or any(len(item) > MAX_LIST_ITEM_LENGTH for item in value)):
+        return f"{p.camel} exceeds list limits"
     if p.kind == "num" and ((p.minimum is not None and value < p.minimum) or (p.maximum is not None and value > p.maximum)):
         return f"{p.camel} must be between {p.minimum} and {p.maximum}"
     return None
@@ -185,6 +195,8 @@ def _fingerprint(tool_name: str, arguments: dict[str, Any]) -> str:
 def dispatch(store: BankToolsStorage, tool_name: str, arguments: Any, extra: dict[str, Spec] | None = None) -> dict[str, Any]:
     """`extra` lets the integration layer add or override Specs for tools owned elsewhere (same validation + idempotency)."""
     specs = {**SPECS, **(extra or {})}
+    if not isinstance(tool_name, str) or not tool_name or len(tool_name) > 64 or not tool_name.replace("_", "").isalnum():
+        return _error("UNKNOWN_TOOL", "invalid tool name")
     if tool_name in NOT_OWNED_TOOLS and tool_name not in specs:
         owner = NOT_OWNED_TOOLS[tool_name]
         return _error("NOT_OWNED", f"{tool_name} is not implemented by bank-tools; owned by {owner}", owner=owner)

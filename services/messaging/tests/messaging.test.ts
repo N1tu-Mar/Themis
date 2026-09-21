@@ -29,6 +29,12 @@ test('invalid inbound payload fails before processing', () => {
   for (const patch of [{ inboundMessageId: '' }, { messageBody: null }, { originationNumber: '' }]) assert.throws(() => normalizeInbound({ ...payload, ...patch }, 'RCS', time));
   assert.throws(() => normalizeInbound(payload, 'SMS', 'invalid'));
 });
+
+test('oversized or malformed provider identity fields are rejected at ingress', () => {
+  assert.throws(() => normalizeInbound({ originationNumber: '+15555550123', inboundMessageId: 'm', messageBody: 'x'.repeat(4001) }, 'SMS', time));
+  assert.throws(() => normalizeInbound({ originationNumber: '15555550123', inboundMessageId: 'm', messageBody: 'hi' }, 'SMS', time));
+  assert.throws(() => normalizeInbound({ originationNumber: '+15555550123', inboundMessageId: 'm'.repeat(257), messageBody: 'hi' }, 'SMS', time));
+});
 test('concurrent duplicate delivery invokes downstream once', async () => {
   let calls = 0;
   const processor = new InboundProcessor(new MemoryIdempotencyStore(), async () => { calls++; });
