@@ -22,7 +22,7 @@ This checklist maps directly to the final success criteria in `prompt.md` sectio
 | SES sends the customer communication | Implemented; live verification pending | Send path exists; verify identity and receive a live email. |
 | Merchant intelligence persists across cases | Locally verified; live verification pending | Dynamo-backed profile store is tested; verify deployed persistence. |
 | A second related case reuses intelligence | Locally verified | Run the two-pass scenario and show the retained merchant profile/cache behavior. |
-| The internal dashboard shows cases and merchant intelligence | Partial | Fixture-backed UI exists; live DynamoDB/API integration is not implemented. |
+| The internal dashboard shows cases and merchant intelligence | Partial | Fixture UI plus server-side DynamoDB/S3 provider (`THEMIS_DASHBOARD_DATA_SOURCE=aws`); live verification pending. |
 | Tests pass | Locally verified | JavaScript/TypeScript workspaces: 138 tests; Python: 202 tests; cross-service integration: 3 tests. |
 | AWS deployment is reproducible | Implemented; live verification pending | Follow the ordered checklist and capture stack outputs in a clean account. |
 | The demo is predictable | Partial | Script and deterministic fixtures exist; complete a timed live dress rehearsal and backup recording. |

@@ -4,7 +4,7 @@ Themis turns an RCS or SMS dispute message into a governed investigation. AWS En
 
 The adapter works with synthetic transaction data and persists cases, merchant intelligence, audit records, and idempotency claims in DynamoDB. It writes generated reports and evidence to a private S3 bucket. Customer updates return through the messaging path, while outcome email uses SES. CloudWatch collects operational signals, and an Amplify-hosted dashboard provides the judge-facing operations experience.
 
-Solid arrows in the diagram are implemented deployment paths. Dashed arrows are deliberately honest boundaries: browser-backed research is not yet connected to the deployed runtime, and the current dashboard is fixture-backed rather than connected to DynamoDB through a live API.
+Solid arrows in the diagram are implemented deployment paths. Dashed arrows are deliberately honest boundaries: browser-backed research is not yet connected to the deployed runtime, and the dashboard's live DynamoDB/S3 provider is unverified against a deployed stack.
 
 - Source: [themis.mmd](./themis.mmd)
 - Submission image: [themis.svg](./themis.svg)

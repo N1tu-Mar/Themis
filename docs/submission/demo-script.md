@@ -50,7 +50,7 @@ Prepare one local or deployed happy-path environment and a prerecorded backup. N
 
 **Show:** The Amplify dashboard with the case and merchant panel.
 
-**Say:** “Operations can inspect cases, merchant aliases, risk signals, and review needs. In this prototype the dashboard is fixture-backed; live DynamoDB integration is a stated next step.”
+**Say:** “Operations can inspect cases, merchant aliases, risk signals, and review needs. The dashboard runs on fixtures by default and reads DynamoDB/S3 server-side in AWS mode (read-only; live verification is a manual gate).”
 
 ## 2:45–3:00 — Demonstrate the flywheel
 

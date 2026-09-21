@@ -56,7 +56,7 @@ The deployable composition depends on `@aws-sdk/client-dynamodb` and
 the root `npm install` and commit the root lockfile before merge. The messaging
 worker intentionally does not edit that integration-owned file.
 
-Dynamo idempotency uses atomic conditional claims. Claims do not expire or automatically release after failure: partial downstream effects must not execute twice. A runtime failure is surfaced from the Lambda while its `PROCESSING` claim remains; an SNS retry is admitted as a duplicate and cannot invoke AgentCore again. Failed claims need operator reconciliation. This is at-most-once admission, not an exactly-once transaction across systems.
+Dynamo idempotency uses atomic conditional claims. Claims do not expire or automatically release after failure: partial downstream effects must not execute twice. A runtime failure is surfaced from the Lambda while its `PROCESSING` claim remains; an SNS retry is admitted as a duplicate and cannot invoke AgentCore again. The scheduled reconciler (below) resumes stranded claims from their delivery record and flags REVIEW/QUARANTINED; it never replays AgentCore. This is at-most-once admission, not an exactly-once transaction across systems.
 
 ## Claim reconciler (scheduled Lambda `reconciler.handler`, bundle `dist/reconciler.mjs`)
 

@@ -18,12 +18,10 @@ COMPLETE (local); AWS smoke script written, never run live.
 - Reuses (does not edit): `tests/integration/harness.py` (CedarGate), `services/bank-tools/tests/fake_dynamo.py`, `infra/lambda/tools-adapter`.
 - World pins `Config(structured_tools=True)` (now the default after b961271).
 
-## KNOWN ISSUES (agentcore items are strict xfails that flip when fixed)
+## KNOWN ISSUES (all agentcore xfails now fixed)
 
-- agentcore `2026-09-21-qa-alias-candidates.md`: Scenario A matches 5 of 6 charges.
-- agentcore `2026-09-21-qa-report-failure.md`: failed report swallowed, customer told it was prepared.
 - infra `2026-09-21-qa-router-defects.md`: profile-store/escalate defects fixed by b961271; raising messenger still leaves an IN_PROGRESS claim until lease expiry (info).
-- messaging `2026-09-21-qa-stuck-claims.md`: failed agent invoke leaves customer unanswered (reconciler unwired).
+- messaging `2026-09-21-qa-stuck-claims.md`: fixed by the durable reconciler (integrated).
 - Root `npm test` does not run `tests/e2e`; integration should add `pytest tests/e2e` and `node --test tests/e2e/*.test.ts`.
 - Based on local `main` b961271 (Wave 2A complete); `origin/main` is behind and was not used.
 

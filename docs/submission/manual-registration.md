@@ -35,7 +35,7 @@ These steps require human action in AWS or a provider workflow. They must stay o
 
 1. Connect the Amplify app to the repository through the approved Git provider/OAuth flow.
 2. Select the intended branch and set the app root to `dashboard` if the build configuration requires it.
-3. Verify build logs, access controls, and the public URL. The current UI remains fixture-backed until a live data API is added.
+3. Verify build logs, access controls, and the public URL. Set `THEMIS_DASHBOARD_DATA_SOURCE=aws` for live reads; otherwise it serves fixtures.
 
 ## Final channel verification
 
